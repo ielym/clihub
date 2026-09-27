@@ -1,0 +1,31 @@
+{
+  "name": "@ielym/skill-sync",
+  "version": "0.1.0",
+  "description": "一份 Skill 源仓库，链接到本机所有 AI 工具（WorkBuddy / Claude Code / Cursor / Codex / Gemini 等）",
+  "keywords": [
+    "skill",
+    "skills",
+    "agent",
+    "ai",
+    "cli",
+    "symlink",
+    "claude",
+    "cursor",
+    "codex",
+    "workbuddy"
+  ],
+  "license": "MIT",
+  "bin": {
+    "skill-sync": "bin/cli.js"
+  },
+  "files": [
+    "bin/cli.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/cli.js status"
+  }
+}
