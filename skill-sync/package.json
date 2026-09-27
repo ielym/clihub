@@ -19,8 +19,7 @@
     "skill-sync": "bin/cli.js"
   },
   "files": [
-    "bin/cli.js",
-    "README.md"
+    "bin/cli.js"
   ],
   "engines": {
     "node": ">=18"
