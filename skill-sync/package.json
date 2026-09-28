@@ -1,6 +1,6 @@
 {
   "name": "@ielym/skill-sync",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "一份 Skill 源仓库，链接到本机所有 AI 工具（WorkBuddy / Claude Code / Cursor / Codex / Gemini 等）",
   "keywords": [
     "skill",

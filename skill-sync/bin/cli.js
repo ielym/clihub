@@ -35,6 +35,7 @@ const TARGETS = {
   gemini: '.gemini/skills',
   antigravity: '.gemini/antigravity/skills',
   qoderwork: '.qoderwork/skills',
+  trae: '.trae-cn/builtin/global/skills', // Trae CN 全局技能目录（builtin 下，Trae 升级可能重置，失效重跑 link 即可）
 };
 
 // 社区 / 第三方 skills：源码不进 git，只把来源声明在清单里
