@@ -9,12 +9,11 @@
  *   skill-sync status                  查看各工具目录的链接状态
  *   skill-sync link [--force]          为已安装的 AI 工具建立目录链接
  *   skill-sync unlink <tool>           解除某个工具的链接
- *   skill-sync update [--force]        拉取自建 + 更新外部 skill + 重新链接（一键同步）
+ *   skill-sync update [--force]        拉取自建 skill + 重新链接（一键同步）
  *   skill-sync pull / push ["msg"]     拉取 / 提交推送（自建 skill）
- *   skill-sync install <name> --url <...>  登记并安装一个外部 skill
- *   skill-sync ext list|add|install    管理外部 skill（git / url 两种来源）
  *
- * 仅用 Node 内置模块；下载解压借用系统自带 curl / tar（或 PowerShell）。
+ * 仅用 Node 内置模块。
+ * 外部（社区 / 第三方）skill：手动安装到 external_skills/，仅参与链接。
  */
 
 const fs = require('fs');
@@ -38,8 +37,7 @@ const TARGETS = {
   trae: '.trae-cn/builtin/global/skills', // Trae CN 全局技能目录（builtin 下，Trae 升级可能重置，失效重跑 link 即可）
 };
 
-// 社区 / 第三方 skills：源码不进 git，只把来源声明在清单里
-const EXT_MANIFEST = path.join('skill-sync', 'references', 'external-skills.json');
+// 外部（社区 / 第三方）skills：手动安装，不进 git，仅参与链接
 const EXT_DIR = 'external_skills';
 
 // ── 工具函数 ────────────────────────────────
@@ -154,7 +152,7 @@ function extDir(source) {
 }
 
 function listSkillItems(source) {
-  // 自建（git 管理）+ 社区（external_skills，不进 git）合并成一个待链接列表
+  // 自建（git 管理）+ 外部（external_skills/，手动安装、不进 git）合并成一个待链接列表
   const famDir = path.join(source, 'skills');
   try {
     if (fs.statSync(famDir).isDirectory()) {
@@ -170,143 +168,10 @@ function listSkillItems(source) {
   return { mode: 'plain', items: null };
 }
 
-function loadManifest(source) {
-  try {
-    const m = JSON.parse(fs.readFileSync(path.join(source, EXT_MANIFEST), 'utf8'));
-    return Array.isArray(m.skills) ? m : { skills: [] };
-  } catch { return { skills: [] }; }
-}
-
-function saveManifest(source, manifest) {
-  fs.writeFileSync(path.join(source, EXT_MANIFEST), JSON.stringify(manifest, null, 2) + '\n');
-}
-
 function describeMode(mode, items) {
   if (mode === 'family') return `家族包 skills/（${items.length} 个 skill）`;
   if (mode === 'packages') return `多技能包容器（${items.length} 个：${items.map((i) => i.name).join(', ')}）`;
   return '扁平 skills 目录（整体链接）';
-}
-
-// ── 外部 skill 安装（git / url 两种来源）──
-
-function findSkillRoot(dir) {
-  if (hasSkillMd(dir)) return dir;
-  const subs = fs.readdirSync(dir).filter((n) => !n.startsWith('.'));
-  if (subs.length === 1) {
-    const one = path.join(dir, subs[0]);
-    try { if (fs.statSync(one).isDirectory() && hasSkillMd(one)) return one; } catch { /* ignore */ }
-  }
-  return null;
-}
-
-function downloadFile(url, dest) {
-  const exe = IS_WIN ? 'curl.exe' : 'curl';
-  const r = spawnSync(exe, ['-sSL', url, '-o', dest], { stdio: ['ignore', 'inherit', 'inherit'] });
-  if (r.error) return `失败：无法下载（需要 curl）——${r.error.message}`;
-  if (r.status !== 0) return `失败：下载出错（curl 退出码 ${r.status}）`;
-  return null;
-}
-
-function extractArchive(archive, dest) {
-  fs.mkdirSync(dest, { recursive: true });
-  const isZip = /\.zip$/i.test(archive);
-  let r;
-  if (IS_WIN) {
-    if (isZip) {
-      const cmd = `Expand-Archive -LiteralPath '${archive.replace(/'/g, "''")}' -DestinationPath '${dest.replace(/'/g, "''")}' -Force`;
-      r = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', cmd], { stdio: ['ignore', 'inherit', 'inherit'] });
-    } else {
-      r = spawnSync('tar', ['-xf', archive, '-C', dest], { stdio: ['ignore', 'inherit', 'inherit'] });
-    }
-  } else {
-    if (isZip) {
-      r = spawnSync('unzip', ['-q', '-o', archive, '-d', dest], { stdio: ['ignore', 'inherit', 'inherit'] });
-    } else {
-      r = spawnSync('tar', ['-xf', archive, '-C', dest], { stdio: ['ignore', 'inherit', 'inherit'] });
-    }
-  }
-  if (r.error) return `失败：无法解压——${r.error.message}`;
-  if (r.status !== 0) return '失败：解压出错';
-  return null;
-}
-
-function keepSecrets(dir) {
-  // url 源更新是「整体替换」，需保留旧目录里的 .env 密钥等本地文件
-  const kept = {};
-  try {
-    for (const f of fs.readdirSync(dir)) {
-      if (f === '.env' || f.startsWith('.env.')) {
-        kept[f] = fs.readFileSync(path.join(dir, f));
-      }
-    }
-  } catch { /* ignore */ }
-  return kept;
-}
-
-function restoreSecrets(dir, kept) {
-  for (const [f, buf] of Object.entries(kept)) {
-    try { fs.writeFileSync(path.join(dir, f), buf); } catch { /* ignore */ }
-  }
-}
-
-/**
- * 安装 / 更新一个外部 skill 到 targetDir/<name>。
- * 返回错误信息字符串，成功返回 null。
- */
-function installOne(s, targetDir) {
-  const dest = path.join(targetDir, s.name);
-
-  if (s.source === 'git') {
-    if (!s.url) return '失败：清单里缺 url';
-    if (fs.existsSync(path.join(dest, '.git'))) {
-      const pr = spawnSync('git', ['-C', dest, 'pull', '--rebase', '--autostash'], { stdio: ['ignore', 'inherit', 'inherit'] });
-      if (pr.error) return `失败：无法运行 git：${pr.error.message}`;
-      if (pr.status !== 0) return '失败：git pull 出错';
-    } else {
-      if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
-      const r = spawnSync('git', ['clone', '--depth', '1', s.url, dest], { stdio: ['ignore', 'inherit', 'inherit'] });
-      if (r.error) return `失败：无法运行 git：${r.error.message}`;
-      if (r.status !== 0) return '失败：git clone 出错';
-    }
-    if (s.version) {
-      const v = spawnSync('git', ['-C', dest, 'checkout', s.version], { stdio: ['ignore', 'inherit', 'inherit'] });
-      if (v.status !== 0) return '失败：checkout 版本出错';
-    }
-    const nested = path.join(dest, 'skills');
-    const ok = hasSkillMd(dest) || (fs.existsSync(nested) && subdirsWithSkill(nested).length > 0);
-    return ok ? null : '完成但没找到 SKILL.md，检查仓库结构';
-  }
-
-  if (s.source === 'url') {
-    if (!s.url) return '失败：清单里缺 url';
-    const kept = fs.existsSync(dest) ? keepSecrets(dest) : {};
-    const tmp = path.join(os.tmpdir(), `skill-sync-${s.name}`);
-    fs.rmSync(tmp, { recursive: true, force: true });
-    fs.mkdirSync(tmp, { recursive: true });
-
-    const urlPath = s.url.split('?')[0];
-    const m = urlPath.match(/\.(zip|tar|tar\.gz|tgz)$/i);
-    const ext = m ? m[1] : 'zip';
-    const archive = path.join(tmp, `pkg.${ext}`);
-
-    let e = downloadFile(s.url, archive);
-    if (e) { fs.rmSync(tmp, { recursive: true, force: true }); return e; }
-
-    const stage = path.join(tmp, 'stage');
-    e = extractArchive(archive, stage);
-    if (e) { fs.rmSync(tmp, { recursive: true, force: true }); return e; }
-
-    const root = findSkillRoot(stage);
-    if (!root) { fs.rmSync(tmp, { recursive: true, force: true }); return '完成但没找到 SKILL.md，检查包结构'; }
-
-    if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
-    fs.cpSync(root, dest, { recursive: true });
-    restoreSecrets(dest, kept);
-    fs.rmSync(tmp, { recursive: true, force: true });
-    return null;
-  }
-
-  return `暂不支持的来源：${s.source}（只支持 git / url）`;
 }
 
 // ── 子命令 ──────────────────────────────────
@@ -429,127 +294,14 @@ function cmdPush(source, message) {
   process.exit(git(source, ['push']) === 0 ? 0 : 1);
 }
 
-function extInstall(source, name, opts) {
-  const manifest = loadManifest(source);
-  const target = extDir(source);
-  fs.mkdirSync(target, { recursive: true });
-  const wanted = name ? manifest.skills.filter((s) => s.name === name) : manifest.skills;
-  if (wanted.length === 0) { console.log(name ? `清单里没有 ${name}` : '清单为空，先 ext add'); return; }
-
-  for (const s of wanted) {
-    const dest = path.join(target, s.name);
-    const existed = fs.existsSync(dest);
-    if (existed && opts.force) fs.rmSync(dest, { recursive: true, force: true });
-    const err = installOne(s, target);
-    console.log(`  ${pad(s.name, 20)}${err || (existed && !opts.force ? '已更新' : '完成')}`);
-  }
-}
-
-function cmdInstall(source, name, opts) {
-  if (!name) {
-    console.error('用法：skill-sync install <名字> --source git|url --url <地址> [--version v]');
-    process.exit(1);
-  }
-  const m = loadManifest(source);
-  let s = m.skills.find((x) => x.name === name);
-  if (!s) {
-    const src = opts.source || 'git';
-    if (!opts.url) { console.error('首次安装需指定 --url <仓库/下载地址>'); process.exit(1); }
-    s = { name, source: src, id: name, url: opts.url, version: opts.version || '', note: opts.note || '' };
-    m.skills.push(s);
-    saveManifest(source, m);
-    console.log(`已登记：${name}（来源 ${src}）`);
-  }
-
-  const target = extDir(source);
-  fs.mkdirSync(target, { recursive: true });
-  const dest = path.join(target, name);
-  const existed = fs.existsSync(dest);
-  if (existed && opts.force) fs.rmSync(dest, { recursive: true, force: true });
-  const err = installOne(s, target);
-  console.log(`  ${pad(name, 20)}${err || (existed && !opts.force ? '已更新' : '完成')}`);
-
-  console.log('\n自动执行 link ...');
-  cmdLink(source, opts.force);
-}
-
 function cmdUpdate(source, opts) {
   console.log('① 拉取自建 skill（git pull）...');
   if (git(source, ['pull', '--rebase', '--autostash']) !== 0) {
     console.error('\ngit pull 失败，请先处理后再试');
     process.exit(1);
   }
-  console.log('\n② 更新外部 skills ...');
-  extInstall(source, null, opts);
-  console.log('\n③ 重新链接到各 AI 工具 ...');
+  console.log('\n② 重新链接到各 AI 工具 ...');
   cmdLink(source, opts.force);
-}
-
-function cmdExt(source, sub, name, opts) {
-  const manifest = loadManifest(source);
-  const target = extDir(source);
-
-  if (!sub || sub === 'list') {
-    console.log(`社区 skills 清单：${path.join(source, EXT_MANIFEST)}`);
-    console.log(`安装位置：${target}（不进 git）\n`);
-    if (manifest.skills.length === 0) {
-      console.log('（空）添加示例：');
-      console.log('  skill-sync ext add feishu-docs --source url --url <下载地址>');
-      return;
-    }
-    console.log(`${pad('名称', 20)}${pad('来源', 12)}${pad('版本', 10)}状态`);
-    console.log('-'.repeat(58));
-    for (const s of manifest.skills) {
-      const ok = hasSkillMd(path.join(target, s.name));
-      console.log(`${pad(s.name, 20)}${pad(s.source, 12)}${pad(s.version || '-', 10)}${ok ? '已安装' : '未安装'}`);
-    }
-    return;
-  }
-
-  if (sub === 'add') {
-    if (!name) {
-      console.error('用法：skill-sync ext add <名字> --source git|url --url <地址> [--version v] [--note 说明]');
-      process.exit(1);
-    }
-    if (manifest.skills.some((s) => s.name === name)) { console.log(`清单里已有 ${name}`); return; }
-    const src = opts.source || 'git';
-    if (!opts.url) { console.error('需指定 --url <仓库/下载地址>'); process.exit(1); }
-    manifest.skills.push({
-      name,
-      source: src,
-      id: name,
-      url: opts.url,
-      version: opts.version || '',
-      note: opts.note || '',
-    });
-    saveManifest(source, manifest);
-    console.log(`已加入清单：${name}（来源 ${src}）`);
-    console.log('执行 skill-sync ext install 安装');
-    return;
-  }
-
-  if (sub === 'install') {
-    extInstall(source, name, opts);
-    console.log('\n自动执行 link ...');
-    cmdLink(source, opts.force);
-    return;
-  }
-
-  console.error(`未知子命令：${sub}（可选：list / add / install）`);
-  process.exit(1);
-}
-
-function parseOpts(list) {
-  const opts = {};
-  for (let i = 0; i < list.length; i++) {
-    const a = list[i];
-    if (a.startsWith('--')) {
-      const k = a.slice(2);
-      const next = list[i + 1];
-      if (next !== undefined && !next.startsWith('--')) { opts[k] = next; i++; } else { opts[k] = true; }
-    }
-  }
-  return opts;
 }
 
 // ── 入口 ────────────────────────────────────
@@ -561,21 +313,18 @@ skill-sync —— 一份 Skill 源仓库，分发到本机所有 AI 工具
   skill-sync status                 查看各工具目录的链接状态
   skill-sync link [--force]         为已安装的 AI 工具建立目录链接
   skill-sync unlink <tool>          解除某个工具的链接（只删链接，不动源）
-  skill-sync update [--force]       一键同步：拉取自建 + 更新外部 + 重新链接
+  skill-sync update [--force]       一键同步：拉取自建 skill + 重新链接
   skill-sync pull                   仅拉取自建 skill（git pull）
   skill-sync push ["提交信息"]      提交并推送自建 skill
-  skill-sync install <名字> --source git|url --url <地址>   登记并安装一个外部 skill
-
-社区 / 第三方 skills（源码不进 git，只登记来源）
-  skill-sync ext list                               查看清单与安装状态
-  skill-sync ext add <名字> --source git|url --url <地址> [--version v]
-  skill-sync ext install [名字]                     安装 / 更新（已装则更新），装完自动 link
 
 选项
   --dir <path>     指定 Skill 源仓库（否则用 init 记录的路径）
-  --force          link 遇非空目录先备份重链 / 安装强制重装
+  --force          link 遇非空目录先备份重链
   -h, --help       显示帮助
   -v, --version    显示版本
+
+外部（社区 / 第三方）skill：手动安装到源仓库 external_skills/ 后执行 link 即可
+一起分发；来源与安装方法见 skill-sync/references/external-skills.md。
 
 源仓库解析优先级：--dir > 环境变量 SKILLS_HUB > ~/.skill-sync.json（init 写入）
 `.trim();
@@ -611,11 +360,9 @@ function main() {
     case 'status': cmdStatus(source); break;
     case 'link': cmdLink(source, force); break;
     case 'unlink': cmdUnlink(source, arg1); break;
-    case 'install': cmdInstall(source, arg1, Object.assign(parseOpts(rest.slice(1)), { force })); break;
     case 'update': cmdUpdate(source, { force }); break;
     case 'pull': cmdPull(source); break;
     case 'push': cmdPush(source, rest.slice(1).join(' ') || null); break;
-    case 'ext': cmdExt(source, rest[1], rest[2], Object.assign(parseOpts(rest.slice(1)), { force })); break;
     default: console.error(`未知命令：${cmd}\n`); console.log(HELP); process.exit(1);
   }
 }
