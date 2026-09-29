@@ -1,0 +1,27 @@
+{
+  "name": "@ielym/algo-info",
+  "version": "0.1.0",
+  "description": "算法信息数据源聚合系统 CLI：抓取 arxiv/github/openreview 等 10 个数据源，去重合并后本地存储与查询",
+  "keywords": [
+    "arxiv",
+    "openreview",
+    "huggingface",
+    "papers",
+    "ai",
+    "aggregator",
+    "cli"
+  ],
+  "license": "MIT",
+  "bin": {
+    "algo-info": "bin/cli.js"
+  },
+  "files": [
+    "bin/cli.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/cli.js sources"
+  }
+}
