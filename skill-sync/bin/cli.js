@@ -111,7 +111,7 @@ function linkOne(target, source, force) {
 
   if (fs.existsSync(target) || isSymlink(target)) {
     let entries = [];
-    try { entries = fs.readdirSync(target); } catch { /* ignore */ }
+    try { entries = fs.readdirSync(target); } catch (e) { console.error(`[warn] 无法读取目录 ${target}：${e.message}`); }
     if (entries.length > 0) {
       if (!force) return '跳过：目录非空（加 --force 先备份再链接）';
       const backup = `${target}.bak-${ts()}`;
@@ -138,7 +138,10 @@ function subdirsWithSkill(dir) {
       .filter((it) => {
         try { return fs.statSync(it.src).isDirectory() && hasSkillMd(it.src); } catch { return false; }
       });
-  } catch { return []; }
+  } catch (e) {
+    console.error(`[warn] 无法列举目录 ${dir}：${e.message}`);
+    return [];
+  }
 }
 
 /**

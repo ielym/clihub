@@ -1,0 +1,28 @@
+{
+  "name": "@ielym/ielym-certification",
+  "version": "1.0.0",
+  "description": "统一的权限凭证获取 CLI：ielym-certification <provider> ... 从 OSS 取回各服务的认证信息，provider 可扩展",
+  "keywords": [
+    "credential",
+    "certification",
+    "secret",
+    "aliyun",
+    "oss",
+    "cli"
+  ],
+  "license": "MIT",
+  "bin": {
+    "ielym-certification": "bin/cli.js"
+  },
+  "files": [
+    "bin/cli.js",
+    "bin/runner.py",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/cli.js providers"
+  }
+}

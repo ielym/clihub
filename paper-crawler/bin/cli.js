@@ -2,17 +2,17 @@
 'use strict';
 
 /**
- * em-crawler —— 东方财富全量采集 CLI。
+ * paper-crawler —— 多数据源原始抓取 CLI。
  *
- * 本文件是 Node.js 入口，负责：
+ * Node.js 入口，负责：
  *   1. 解析命令行参数
- *   2. 用 python3 调用 bin/runner.py 执行实际采集
+ *   2. 用 python3 调用 bin/runner.py 执行抓取
  *   3. 透传 JSON 输出与退出码
  *
  * 用法:
- *   em-crawler <command> [--key value ...]
- *   em-crawler list
- *   em-crawler --help
+ *   paper-crawler <数据源指令> [--key value ...]
+ *   paper-crawler sources
+ *   paper-crawler --help
  */
 
 const { spawnSync } = require('child_process');
@@ -29,26 +29,15 @@ const PYTHON = 'python3';
 function main() {
   const argv = process.argv.slice(2);
 
-  if (argv.length === 0 || argv.includes('-h') || argv.includes('--help')) {
-    const r = spawnSync(PYTHON, [RUNNER, '--help'], { encoding: 'utf8' });
-    if (r.error) {
-      console.error(`错误：无法执行 ${PYTHON}：${r.error.message}`);
-      process.exit(1);
-    }
-    process.stdout.write(r.stdout || r.stderr || '');
-    return;
-  }
-
   if (argv.includes('-v') || argv.includes('--version')) {
     console.log(PKG.version);
     return;
   }
 
-  // 把所有参数透传给 runner.py
   const r = spawnSync(PYTHON, [RUNNER, ...argv], {
     encoding: 'utf8',
-    maxBuffer: 50 * 1024 * 1024, // 50MB，财务/行情数据可能较大
-    stdio: ['inherit', 'pipe', 'pipe'],
+    maxBuffer: 50 * 1024 * 1024, // 50MB，列表类数据源原始内容可能较大
+    env: { ...process.env },
   });
 
   if (r.error) {
@@ -57,7 +46,6 @@ function main() {
   }
   if (r.stdout) process.stdout.write(r.stdout);
   if (r.stderr) process.stderr.write(r.stderr);
-
   process.exit(r.status ?? 1);
 }
 

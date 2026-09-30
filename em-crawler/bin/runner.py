@@ -228,7 +228,8 @@ def _get_method_sig(adapter, method_name):
     method = getattr(adapter, method_name)
     try:
         hints = typing.get_type_hints(method)
-    except Exception:
+    except Exception as e:
+        print(f"[warn] 无法解析 {method_name} 的类型注解，参数将按字符串处理：{e}", file=sys.stderr)
         hints = {}
     sig = inspect.signature(method)
     params = {}
@@ -346,7 +347,6 @@ def _help_text():
         "",
         "环境变量:",
         "  EM_CRAWLER_ROOT   爬虫根目录（含 em_crawler/ 的目录），默认自动探测",
-        "  EM_CRAWLER_PYTHON Python 解释器路径，默认用 node 查找的 python",
         "",
         "常用命令:",
     ]
