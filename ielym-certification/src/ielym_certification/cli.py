@@ -29,6 +29,8 @@ USAGE_HINT = """\
   ielym-certification aliyun-oss --bucket <bucket> --json       输出带定位信息的 JSON 信封
   ielym-certification aliyun-oss --bucket <bucket> --out <file> 写入文件（权限 600）
   ielym-certification aliyun-oss --list                         列出已登记的凭证
+  ielym-certification api-key --name <服务名>                   获取第三方服务的 API Key（JSON 原文）
+  ielym-certification api-key --list                            列出已登记的第三方服务
 
 扩展新权限: 在 providers/ 下新增一个 BaseProvider 子类即可，CLI 会自动加载。
 """
@@ -137,8 +139,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     provider = providers[args.provider]()
 
     try:
-        target = provider.target(args)
-
+        # --list 不定位具体凭证，需在 target() 之前处理（部分 provider 无默认 name）
         if args.list:
             names = provider.list_names(args)
             if args.json:
@@ -155,6 +156,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     print(n)
             return 0
 
+        target = provider.target(args)
         text = provider.fetch(args)
         if args.out:
             _write_out(args.out, text)

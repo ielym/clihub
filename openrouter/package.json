@@ -1,0 +1,27 @@
+{
+  "name": "@ielym/openrouter",
+  "version": "1.0.0",
+  "description": "OpenRouter 模型目录抓取 CLI：解析模型清单为结构化 JSON 记录，可选凭据由 ielym-certification 提供",
+  "keywords": [
+    "openrouter",
+    "models",
+    "pricing",
+    "crawler",
+    "cli"
+  ],
+  "license": "MIT",
+  "bin": {
+    "openrouter": "bin/cli.js"
+  },
+  "files": [
+    "bin/cli.js",
+    "bin/runner.py",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/cli.js --help"
+  }
+}

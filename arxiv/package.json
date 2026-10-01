@@ -1,0 +1,27 @@
+{
+  "name": "@ielym/arxiv",
+  "version": "1.0.0",
+  "description": "arXiv 预印本抓取 CLI：解析 Atom 接口为结构化 JSON 记录",
+  "keywords": [
+    "arxiv",
+    "preprints",
+    "papers",
+    "crawler",
+    "cli"
+  ],
+  "license": "MIT",
+  "bin": {
+    "arxiv": "bin/cli.js"
+  },
+  "files": [
+    "bin/cli.js",
+    "bin/runner.py",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/cli.js --help"
+  }
+}

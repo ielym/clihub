@@ -1,0 +1,28 @@
+{
+  "name": "@ielym/artificial-analysis",
+  "version": "1.0.0",
+  "description": "ArtificialAnalysis 模型评测原始抓取 CLI：按模态拉取模型评测数据，必需 API Key 由 ielym-certification 提供",
+  "keywords": [
+    "artificial-analysis",
+    "models",
+    "benchmark",
+    "crawler",
+    "raw",
+    "cli"
+  ],
+  "license": "MIT",
+  "bin": {
+    "artificial-analysis": "bin/cli.js"
+  },
+  "files": [
+    "bin/cli.js",
+    "bin/runner.py",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/cli.js --help"
+  }
+}

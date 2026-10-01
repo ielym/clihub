@@ -1,0 +1,27 @@
+{
+  "name": "@ielym/github-trending",
+  "version": "1.0.0",
+  "description": "GitHub Trending 榜单抓取 CLI：解析页面为结构化 JSON 记录",
+  "keywords": [
+    "github",
+    "trending",
+    "repositories",
+    "crawler",
+    "cli"
+  ],
+  "license": "MIT",
+  "bin": {
+    "github-trending": "bin/cli.js"
+  },
+  "files": [
+    "bin/cli.js",
+    "bin/runner.py",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/cli.js --help"
+  }
+}
