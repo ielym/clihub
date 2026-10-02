@@ -1,0 +1,29 @@
+{
+  "name": "@ielym/ip-tunnel",
+  "version": "1.0.0",
+  "description": "快代理隧道代理（IP 隧道）CLI：从 OSS 凭证库取回隧道账号，构建/输出代理配置，并通过隧道发起带重试与速率限制的 HTTP 请求（每次请求换 IP）。凭据不写入代码。",
+  "keywords": [
+    "ip-tunnel",
+    "ip-proxy",
+    "kuaidaili",
+    "tunnel",
+    "proxy",
+    "crawler",
+    "cli"
+  ],
+  "license": "MIT",
+  "bin": {
+    "ip-tunnel": "bin/cli.js"
+  },
+  "files": [
+    "bin/cli.js",
+    "bin/runner.py",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/cli.js --help"
+  }
+}
