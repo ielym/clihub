@@ -1,0 +1,27 @@
+{
+  "name": "@ielym/sched",
+  "version": "0.1.0",
+  "description": "sched —— 本地定时任务调度器 CLI：启停服务、管理任务、查看执行历史与日志",
+  "keywords": [
+    "scheduler",
+    "cron",
+    "apscheduler",
+    "cli",
+    "ops"
+  ],
+  "license": "MIT",
+  "bin": {
+    "sched": "bin/cli.js"
+  },
+  "files": [
+    "bin/cli.js",
+    "bin/runner.py",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/cli.js --help"
+  }
+}

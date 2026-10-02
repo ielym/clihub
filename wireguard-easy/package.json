@@ -1,0 +1,26 @@
+{
+  "name": "@ielym/wireguard-easy",
+  "version": "1.0.0",
+  "description": "WireGuard 一键部署与接入 CLI：服务端部署、客户端增删查、二维码与运行状态输出",
+  "keywords": [
+    "wireguard",
+    "vpn",
+    "wireguard-easy",
+    "deploy",
+    "cli"
+  ],
+  "license": "MIT",
+  "bin": {
+    "wireguard-easy": "bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "assets"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/cli.js --help"
+  }
+}
