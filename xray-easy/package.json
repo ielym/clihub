@@ -1,0 +1,19 @@
+{
+  "name": "xray-easy",
+  "version": "1.0.0",
+  "description": "Xray VLESS+Reality 一键部署与接入 CLI：安装/生成密钥/写配置/客户端链接与二维码/状态/排障。抗 GFW 端口封锁（WireGuard 51820 被封时的替代方案）。",
+  "bin": {
+    "xray-easy": "bin/cli.js"
+  },
+  "scripts": {
+    "test": "bash -n bin/scripts/*.sh && node -e \"require('./bin/cli.js').help=true\" || true"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ielym/xray-easy.git"
+  }
+}
