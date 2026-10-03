@@ -35,6 +35,7 @@ const TARGETS = {
   antigravity: '.gemini/antigravity/skills',
   qoderwork: '.qoderwork/skills',
   trae: '.trae-cn/skills', // Trae CN 用户级技能目录（自建技能放这里，不被 builtin 的官方清单同步覆盖）
+  dsh: '.dsh/skills', // DeepSeek Harness：Windows 为 %USERPROFILE%\.dsh\skills，Unix 为 ~/.dsh/skills
 };
 
 // 外部（社区 / 第三方）skills：手动安装，不进 git，仅参与链接
