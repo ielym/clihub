@@ -65,7 +65,14 @@ def bucket_from_argv(argv: List[str]) -> Optional[str]:
 
 def _run_certification(args: List[str]) -> Dict[str, Any]:
     argv = [find_certification_bin(), *args]
-    proc = subprocess.run(argv, capture_output=True, text=True, timeout=60)
+    proc = subprocess.run(
+        argv,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
+    )
     if proc.returncode != 0:
         detail = (proc.stderr or proc.stdout or "").strip()
         raise CertificationUnavailable(detail or f"ielym-certification 退出码 {proc.returncode}")
@@ -107,7 +114,14 @@ def get_credential(bucket: Optional[str] = None) -> Credential:
 def bootstrap_status() -> Dict[str, Any]:
     """ielym-certification 的引导状态（供 info 展示，不含密钥明文）。"""
     argv = [find_certification_bin(), "bootstrap", "--status", "--json"]
-    proc = subprocess.run(argv, capture_output=True, text=True, timeout=30)
+    proc = subprocess.run(
+        argv,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=30,
+    )
     try:
         return json.loads(proc.stdout)
     except json.JSONDecodeError:

@@ -83,7 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("target")
     p.add_argument("-r", "--recursive", action="store_true")
 
-    p = sub.add_parser("sync", help="增量同步目录（本地↔OSS、OSS↔OSS）")
+    p = sub.add_parser("sync", help="增量同步目录（本地 -> OSS、OSS -> OSS）")
     _add_global(p)
     p.add_argument("source")
     p.add_argument("target")
@@ -327,7 +327,19 @@ def _emit(args, result: Result) -> None:
             sys.stderr.write(result.stderr)
 
 
+def _force_utf8_stdio() -> None:
+    """管道/重定向场景下 stdout/stderr 可能是 cp936 等 ANSI 码页，
+    统一重配为 UTF-8 + replace，保证任何输出（含中文、emoji、特殊符号）都不崩溃。
+    交互控制台不受影响。"""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
 def main(argv=None) -> int:
+    _force_utf8_stdio()
     parser = build_parser()
     args = parser.parse_args(argv)
 
