@@ -2,13 +2,13 @@
 'use strict';
 
 /**
- * sched —— 本地定时任务调度器 CLI。
+ * sched —— 任务调度器 CLI（Node.js 薄封装）。
  *
- * 本文件是 Node.js 入口，只做一件事：把参数透传给 bin/runner.py（Python 实现），
- * 并原样透传 stdout / stderr / 退出码。
+ * 只做一件事：把参数透传给 bin/runner.py（由它定位 scheduler 代码仓并调用
+ * sched.__main__ 的入口），原样透传 stdout / stderr / 退出码。
  *
  * 用法:
- *   sched <command> [--key value ...]
+ *   sched <command> [options]      # register/run/list/status/set-soft/serve
  *   sched --help
  */
 

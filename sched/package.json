@@ -1,13 +1,15 @@
 {
   "name": "@ielym/sched",
-  "version": "0.1.0",
-  "description": "sched —— 本地定时任务调度器 CLI：启停服务、管理任务、查看执行历史与日志",
+  "version": "1.0.0",
+  "description": "sched 任务调度器 CLI：优先级抢占、五道闸注册、断点续跑与内嵌管理台的命令行入口（需配合 ielym/scheduler 代码仓使用）。",
   "keywords": [
+    "sched",
     "scheduler",
     "cron",
-    "apscheduler",
-    "cli",
-    "ops"
+    "preemptive",
+    "cgroup",
+    "task-runner",
+    "cli"
   ],
   "license": "MIT",
   "bin": {
@@ -15,8 +17,7 @@
   },
   "files": [
     "bin/cli.js",
-    "bin/runner.py",
-    "src"
+    "bin/runner.py"
   ],
   "engines": {
     "node": ">=18"
