@@ -1,6 +1,6 @@
 {
   "name": "@ielym/aliyun-oss",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "阿里云 OSS 常用操作 CLI：上传、下载、列举、删除、同步、签名 URL、用量统计，底层调用 ossutil，可用内网 Endpoint 免流量费",
   "keywords": [
     "aliyun",
