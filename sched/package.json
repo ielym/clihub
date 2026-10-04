@@ -1,28 +1,8 @@
 {
   "name": "@ielym/sched",
-  "version": "1.0.0",
-  "description": "sched 任务调度器 CLI：优先级抢占、五道闸注册、断点续跑与内嵌管理台的命令行入口（需配合 ielym/scheduler 代码仓使用）。",
-  "keywords": [
-    "sched",
-    "scheduler",
-    "cron",
-    "preemptive",
-    "cgroup",
-    "task-runner",
-    "cli"
-  ],
-  "license": "MIT",
-  "bin": {
-    "sched": "bin/cli.js"
-  },
-  "files": [
-    "bin/cli.js",
-    "bin/runner.py"
-  ],
-  "engines": {
-    "node": ">=18"
-  },
-  "scripts": {
-    "test": "node bin/cli.js --help"
-  }
+  "version": "2.0.0",
+  "description": "sched 任务调度器 CLI：进程意图驱动 + 固定控制协议 + 全进程抢占的本地守护子任务调度器（需配合 ielym/scheduler 代码仓使用）。",
+  "keywords": ["sched", "scheduler", "intent", "daemon"],
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node bin/cli.js --help" }
 }

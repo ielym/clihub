@@ -8,8 +8,10 @@
  * sched.__main__ 的入口），原样透传 stdout / stderr / 退出码。
  *
  * 用法:
- *   sched <command> [options]      # register/run/list/status/set-soft/serve
+ *   sched <command> [options]      # register/start/list/status/serve/process(list|stop|no-retry)
  *   sched --help
+ *
+ * v3 无 run 子命令（正式执行只能由意图文件触发）、无 set-soft（资源硬限由 cgroup 管理）。
  */
 
 const { spawnSync } = require('child_process');
