@@ -1,0 +1,15 @@
+{
+  "name": "@ielym/jiecode",
+  "version": "1.0.0",
+  "description": "通用接码 CLI：余额查询、取号、取短信、历史记录。平台通过 provider 接入，当前支持 d1jiema。",
+  "keywords": ["jiecode", "接码", "短信", "验证码", "d1jiema"],
+  "bin": {
+    "jiecode": "bin/cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/cli.js --help"
+  }
+}
