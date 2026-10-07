@@ -11,7 +11,9 @@ import json
 import sys
 
 
-def _main(argv: list[str]) -> None:
+def _main(argv: list[str] | None = None) -> None:
+    if argv is None:
+        argv = sys.argv[1:]
     if not argv or argv[0] in ("-h", "--help", "help"):
         _emit(_help())
         return
