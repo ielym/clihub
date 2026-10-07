@@ -61,11 +61,7 @@ class D1Provider(BaseProvider):
             raise SystemExit(
                 f"错误：{self.name} 缺少 api_token。请设置 D1_TOKEN 或配置 providers.d1jiema.api_token。"
             )
-        return {
-            "account": os.environ.get("D1_ACCOUNT") or provider_config.get("account", ""),
-            "api_token": token,
-            "api_base": api_base,
-        }
+        return {"api_token": token, "api_base": api_base}
 
     def _call(self, creds: dict, code: str, params: dict[str, str]) -> str:
         query: dict[str, str] = {"code": code, "token": creds["api_token"]}
@@ -213,4 +209,11 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        exit_code = main()
+    except SystemExit:
+        raise
+    except Exception as exc:  # 网络/平台异常兜底，避免抛出原始 traceback
+        print(f"错误：{exc}", file=sys.stderr)
+        exit_code = 1
+    sys.exit(exit_code)

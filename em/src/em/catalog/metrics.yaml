@@ -1,0 +1,4487 @@
+# em 指标目录 —— 数据意图 → 口径 → 多源 provider 链
+# kind: scalar(单值) | series(序列) | table(清单)
+# providers 有序兜底链：priority 升序尝试，命中即停；失败自动降级
+
+groups:
+  quote: 行情
+  capital: 资金
+  finance: 财务
+  f10: 公司资料
+  company: 股东与高管
+  news: 资讯
+  fund: 基金
+  macro: 宏观
+  guba: 股吧
+  tool: 工具
+  event: 数据中心事件
+
+metrics:
+  # =====================================================================
+  # 行情 · 价格
+  # =====================================================================
+  - id: price
+    name: 最新价
+    aliases: [现价, latest, last_price, 当前价]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: price, args: {code: code}, priority: 1}]
+
+  - id: close
+    name: 收盘价
+    aliases: [收盘, close_price, 收]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}, trade_date: {required: false}}
+    calibrations:
+      adjust: {values: [none, qfq, hfq], default: none}
+    providers:
+      - {endpoint: quote.kline, field: close, args: {code: code, klt: 101, fqt: fqt, lmt: 80, end: trade_date}, priority: 1}
+      - {endpoint: quote.snapshot, field: price, args: {code: code}, priority: 2}
+
+  - id: open
+    name: 开盘价
+    aliases: [开盘, open_price]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}, trade_date: {required: false}}
+    calibrations:
+      adjust: {values: [none, qfq, hfq], default: none}
+    providers:
+      - {endpoint: quote.snapshot, field: open, args: {code: code}, priority: 1}
+      - {endpoint: quote.kline, field: open, args: {code: code, klt: 101, fqt: fqt, lmt: 80, end: trade_date}, priority: 2}
+
+  - id: high
+    name: 最高价
+    aliases: [最高, high_price]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}, trade_date: {required: false}}
+    calibrations:
+      adjust: {values: [none, qfq, hfq], default: none}
+    providers:
+      - {endpoint: quote.snapshot, field: high, args: {code: code}, priority: 1}
+      - {endpoint: quote.kline, field: high, args: {code: code, klt: 101, fqt: fqt, lmt: 80, end: trade_date}, priority: 2}
+
+  - id: low
+    name: 最低价
+    aliases: [最低, low_price]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}, trade_date: {required: false}}
+    calibrations:
+      adjust: {values: [none, qfq, hfq], default: none}
+    providers:
+      - {endpoint: quote.snapshot, field: low, args: {code: code}, priority: 1}
+      - {endpoint: quote.kline, field: low, args: {code: code, klt: 101, fqt: fqt, lmt: 80, end: trade_date}, priority: 2}
+
+  - id: pre_close
+    name: 昨收价
+    aliases: [昨收, prev_close, previous_close]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: pre_close, args: {code: code}, priority: 1}]
+
+  - id: limit_up
+    name: 涨停价
+    aliases: [涨停价, 涨停]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: limit_up, args: {code: code}, priority: 1}]
+
+  - id: limit_down
+    name: 跌停价
+    aliases: [跌停价]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: limit_down, args: {code: code}, priority: 1}]
+
+  - id: change
+    name: 涨跌额
+    aliases: [涨跌, change_amt]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers:
+      - {endpoint: quote.snapshot, field: change, args: {code: code}, priority: 1}
+      - {endpoint: quote.kline, field: change, args: {code: code, klt: 101, fqt: 0, lmt: 80, end: trade_date}, priority: 2}
+
+  - id: pct_change
+    name: 涨跌幅
+    aliases: [涨跌幅, percent_change, 涨幅]
+    group: quote
+    kind: scalar
+    unit: "%"
+    args: {code: {required: true}}
+    providers:
+      - {endpoint: quote.snapshot, field: pct_change, args: {code: code}, priority: 1}
+      - {endpoint: quote.kline, field: pct_change, args: {code: code, klt: 101, fqt: 0, lmt: 80, end: trade_date}, priority: 2}
+
+  - id: amplitude
+    name: 振幅
+    aliases: [振幅]
+    group: quote
+    kind: scalar
+    unit: "%"
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: amplitude, args: {code: code}, priority: 1}]
+
+  # 行情 · 量
+  - id: volume
+    name: 成交量
+    aliases: [成交量, vol]
+    group: quote
+    kind: scalar
+    unit: 手
+    args: {code: {required: true}}
+    providers:
+      - {endpoint: quote.snapshot, field: volume, args: {code: code}, priority: 1}
+      - {endpoint: quote.kline, field: volume, args: {code: code, klt: 101, fqt: 0, lmt: 80, end: trade_date}, priority: 2}
+
+  - id: amount
+    name: 成交额
+    aliases: [成交额, turnover_amount]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers:
+      - {endpoint: quote.snapshot, field: amount, args: {code: code}, priority: 1}
+      - {endpoint: quote.kline, field: amount, args: {code: code, klt: 101, fqt: 0, lmt: 80, end: trade_date}, priority: 2}
+
+  - id: turnover_rate
+    name: 换手率
+    aliases: [换手率, 换手, turnover]
+    group: quote
+    kind: scalar
+    unit: "%"
+    args: {code: {required: true}}
+    providers:
+      - {endpoint: quote.snapshot, field: turnover_rate, args: {code: code}, priority: 1}
+      - {endpoint: quote.kline, field: turnover_rate, args: {code: code, klt: 101, fqt: 0, lmt: 80, end: trade_date}, priority: 2}
+    equivalence: {sources: [quote.snapshot, quote.kline], tolerance: 0.01, verified: false}
+
+  - id: volume_ratio
+    name: 量比
+    aliases: [量比]
+    group: quote
+    kind: scalar
+    unit: ""
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: volume_ratio, args: {code: code}, priority: 1}]
+
+  # 行情 · 估值
+  - id: pe
+    name: 市盈率
+    aliases: [市盈率, PE, 市盈]
+    group: quote
+    kind: scalar
+    unit: 倍
+    args: {code: {required: true}}
+    calibrations:
+      scope: {values: [ttm, dynamic, static], default: ttm, maps: {ttm: pe_ttm, dynamic: pe_dynamic, static: pe_static}}
+    providers: [{endpoint: quote.snapshot, field: "{scope_field}", args: {code: code}, priority: 1}]
+
+  - id: pb
+    name: 市净率
+    aliases: [市净率, PB, 市净]
+    group: quote
+    kind: scalar
+    unit: 倍
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: pb, args: {code: code}, priority: 1}]
+
+  - id: total_mv
+    name: 总市值
+    aliases: [总市值, market_cap, 市值]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: total_mv, args: {code: code}, priority: 1}]
+
+  - id: float_mv
+    name: 流通市值
+    aliases: [流通市值, float_cap]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: float_mv, args: {code: code}, priority: 1}]
+
+  # 行情 · 资金净流入（快照主成分）
+  - id: main_net_inflow
+    name: 主力净流入
+    aliases: [主力净额, main_net]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: main_net_inflow, args: {code: code}, priority: 1}]
+
+  - id: super_net_inflow
+    name: 超大单净流入
+    aliases: [超大单净额]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: super_net_inflow, args: {code: code}, priority: 1}]
+
+  - id: large_net_inflow
+    name: 大单净流入
+    aliases: [大单净额]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: large_net_inflow, args: {code: code}, priority: 1}]
+
+  - id: mid_net_inflow
+    name: 中单净流入
+    aliases: [中单净额]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: mid_net_inflow, args: {code: code}, priority: 1}]
+
+  - id: small_net_inflow
+    name: 小单净流入
+    aliases: [小单净额, 散户净额]
+    group: quote
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.snapshot, field: small_net_inflow, args: {code: code}, priority: 1}]
+
+  # 行情 · K线 / 分时 / 盘口
+  - id: kline_daily
+    name: 日K线
+    aliases: [日K, kline, K线]
+    group: quote
+    kind: series
+    args: {code: {required: true}, trade_date: {required: false}}
+    calibrations:
+      adjust: {values: [none, qfq, hfq], default: none}
+    providers: [{endpoint: quote.kline, field: "", args: {code: code, klt: 101, fqt: fqt, lmt: 120, end: trade_date}, row: all, priority: 1}]
+
+  - id: kline_weekly
+    name: 周K线
+    aliases: [周K, kline_w]
+    group: quote
+    kind: series
+    args: {code: {required: true}}
+    calibrations:
+      adjust: {values: [none, qfq, hfq], default: none}
+    providers: [{endpoint: quote.kline, field: "", args: {code: code, klt: 102, fqt: fqt, lmt: 120}, row: all, priority: 1}]
+
+  - id: kline_monthly
+    name: 月K线
+    aliases: [月K, kline_m]
+    group: quote
+    kind: series
+    args: {code: {required: true}}
+    calibrations:
+      adjust: {values: [none, qfq, hfq], default: none}
+    providers: [{endpoint: quote.kline, field: "", args: {code: code, klt: 103, fqt: fqt, lmt: 120}, row: all, priority: 1}]
+
+  - id: tick
+    name: 分时成交
+    aliases: [分时, trend, 逐笔]
+    group: quote
+    kind: series
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.trends, field: "", args: {code: code, ndays: 1}, row: all, priority: 1}]
+
+  - id: orderbook
+    name: 五档盘口
+    aliases: [盘口, 五档, order_book]
+    group: quote
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: quote.orderbook, field: "", args: {code: code}, priority: 1}]
+
+  # 行情 · 榜单
+  - id: industry_index
+    name: 行业板块行情
+    aliases: [行业板块, 行业指数]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: quote.clist, field: "", args: {fs: "m:90+t:2", page_size: page_size}, row: all, priority: 1}]
+
+  - id: concept_board
+    name: 概念板块行情
+    aliases: [概念板块, 概念]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: quote.clist, field: "", args: {fs: "m:90+t:3", page_size: page_size}, row: all, priority: 1}]
+
+  - id: global_index
+    name: 全球指数
+    aliases: [全球指数, 国际指数]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: cross.global_index, field: "", args: {page_size: page_size}, row: all, priority: 1}]
+
+  - id: bond_list
+    name: 债券列表
+    aliases: [债券, bond]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: cross.bond, field: "", args: {page_size: page_size}, row: all, priority: 1}]
+
+  - id: bj_stock
+    name: 北交所股票列表
+    aliases: [北交所, 北证]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: cross.bj, field: "", args: {page_size: page_size}, row: all, priority: 1}]
+
+  - id: zt_pool
+    name: 涨停池
+    aliases: [涨停池, 涨停板]
+    group: quote
+    kind: table
+    args: {trade_date: {required: false}, page_size: {required: false}}
+    providers: [{endpoint: pool.get, field: "", args: {kind: zt, trade_date: trade_date, page_size: page_size}, row: all, priority: 1}]
+
+  - id: dt_pool
+    name: 跌停池
+    aliases: [跌停池, 跌停板]
+    group: quote
+    kind: table
+    args: {trade_date: {required: false}, page_size: {required: false}}
+    providers: [{endpoint: pool.get, field: "", args: {kind: dt, trade_date: trade_date, page_size: page_size}, row: all, priority: 1}]
+
+  - id: zb_pool
+    name: 炸板池
+    aliases: [炸板池, 炸板]
+    group: quote
+    kind: table
+    args: {trade_date: {required: false}, page_size: {required: false}}
+    providers: [{endpoint: pool.get, field: "", args: {kind: zb, trade_date: trade_date, page_size: page_size}, row: all, priority: 1}]
+
+  - id: yzt_pool
+    name: 昨日涨停池
+    aliases: [昨日涨停, yzt]
+    group: quote
+    kind: table
+    args: {trade_date: {required: false}, page_size: {required: false}}
+    providers: [{endpoint: pool.get, field: "", args: {kind: yzt, trade_date: trade_date, page_size: page_size}, row: all, priority: 1}]
+
+  # =====================================================================
+  # 资金
+  # =====================================================================
+  - id: moneyflow
+    name: 资金流向（历史）
+    aliases: [资金流向, 资金流, money_flow]
+    group: capital
+    kind: series
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: money.flow, field: "", args: {code: code, lmt: 20}, row: all, priority: 1}]
+
+  # 资金流向 · 全口径（push2 clist/ulist，字段映射见 providers/quote.py）
+  - id: stock_moneyflow_rank
+    name: 个股资金流排行
+    aliases: [个股资金流排行, 主力净流入排名, 资金流排行, main_moneyflow_rank]
+    group: capital
+    kind: table
+    args: {market: {required: false}, stat: {required: false}, page_size: {required: false}}
+    calibrations:
+      stat: {values: [today, 3d, 5d, 10d], default: today}
+      market: {values: [all, hsa, sha, kcb, sza, cyb, zxb, hb, sb, bja], default: all}
+    providers: [{endpoint: flow.stock_rank, field: "", args: {market: market, stat: stat, page_size: page_size}, row: all, priority: 1}]
+
+  - id: industry_moneyflow_rank
+    name: 行业资金流排行
+    aliases: [行业资金流, 行业资金流排行, industry_moneyflow_rank]
+    group: capital
+    kind: table
+    args: {stat: {required: false}, page_size: {required: false}}
+    calibrations:
+      stat: {values: [today, 3d, 5d, 10d], default: today}
+    providers: [{endpoint: flow.board_rank, field: "", args: {board: industry, stat: stat, page_size: page_size}, row: all, priority: 1}]
+
+  - id: concept_moneyflow_rank
+    name: 概念资金流排行
+    aliases: [概念资金流, 概念资金流排行, concept_moneyflow_rank]
+    group: capital
+    kind: table
+    args: {stat: {required: false}, page_size: {required: false}}
+    calibrations:
+      stat: {values: [today, 3d, 5d, 10d], default: today}
+    providers: [{endpoint: flow.board_rank, field: "", args: {board: concept, stat: stat, page_size: page_size}, row: all, priority: 1}]
+
+  - id: region_moneyflow_rank
+    name: 地域资金流排行
+    aliases: [地域资金流, 地域资金流排行, region_moneyflow_rank]
+    group: capital
+    kind: table
+    args: {stat: {required: false}, page_size: {required: false}}
+    calibrations:
+      stat: {values: [today, 3d, 5d, 10d], default: today}
+    providers: [{endpoint: flow.board_rank, field: "", args: {board: region, stat: stat, page_size: page_size}, row: all, priority: 1}]
+
+  - id: market_moneyflow
+    name: 大盘/指数资金流
+    aliases: [大盘资金流, 指数资金流, 沪深两市资金流, market_moneyflow]
+    group: capital
+    kind: table
+    args: {index: {required: false}}
+    calibrations:
+      index: {values: [hs2, sh, sz, cyb, shb, szb, kcb], default: hs2}
+    providers: [{endpoint: flow.index, field: "", args: {index: index}, row: all, priority: 1}]
+
+  - id: market_moneyflow_history
+    name: 大盘/指数资金流历史
+    aliases: [大盘资金流历史, 指数资金流历史, market_moneyflow_history]
+    group: capital
+    kind: series
+    unit: 元
+    args: {index: {required: false}, lmt: {required: false}}
+    calibrations:
+      index: {values: [sh, sz, cyb, shb, szb, kcb], default: sh}
+    providers: [{endpoint: flow.index_kline, field: "", args: {index: index, lmt: lmt}, row: all, priority: 1}]
+
+  - id: board_stock_moneyflow
+    name: 板块内个股资金流
+    aliases: [板块内个股资金流, 板块个股资金流, board_stock_moneyflow]
+    group: capital
+    kind: table
+    args: {board_code: {required: true}, stat: {required: false}, page_size: {required: false}}
+    calibrations:
+      stat: {values: [today, 3d, 5d, 10d], default: today}
+    providers: [{endpoint: flow.board_stock, field: "", args: {board_code: board_code, stat: stat, page_size: page_size}, row: all, priority: 1}]
+
+  - id: lhb
+    name: 龙虎榜
+    aliases: [龙虎榜, 龙虎]
+    group: capital
+    kind: table
+    args: {trade_date: {required: false}, page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_DAILYBILLBOARD_DETAILSNEW, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  # 龙虎榜 · 明细/营业部维度（datacenter RPT_*；口径取自 data.eastmoney.com/newstatic/js/lhb/*.js）
+  - id: lhb_trade_detail
+    name: 龙虎榜交易明细
+    aliases: [龙虎榜交易明细, 龙虎榜明细, lhb_trade_detail]
+    group: capital
+    kind: table
+    args: {trade_date: {required: true}, page_size: {required: false}, page: {required: false}}
+    calibrations:
+      market: {values: [all, sha, kcb, sza, cyb, bja, kzz], default: all, maps: {all: '', sha: '(TRADE_MARKET_CODE in ("069001001001","069001001006","069001001003"))', kcb: '(TRADE_MARKET_CODE="069001001006")', sza: '(TRADE_MARKET_CODE in ("069001002001","069001002002","069001002005"))', cyb: '(TRADE_MARKET_CODE="069001002002")', bja: '(TRADE_MARKET_CODE="069001017")', kzz: '(SECURITY_TYPE_CODE="060")'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_DAILYBILLBOARD_DETAILSNEW, filter: "(TRADE_DATE<='{trade_date}')(TRADE_DATE>='{trade_date}'){market_field}", sort_columns: TRADE_DATE, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: lhb_stock_day
+    name: 个股单日龙虎榜明细
+    aliases: [个股单日龙虎榜, 单日龙虎榜明细, lhb_stock_day]
+    group: capital
+    kind: table
+    args: {code: {required: true}, trade_date: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_DAILYBILLBOARD_DETAILSNEW, filter: "(SECURITY_CODE=\"{code}\")(TRADE_DATE<='{trade_date}')(TRADE_DATE>='{trade_date}')", sort_columns: TRADE_DATE, sort_types: -1, page_size: page_size}, row: all, priority: 1}
+
+  - id: lhb_stock_history
+    name: 个股龙虎榜历史
+    aliases: [个股龙虎榜历史, 龙虎榜历史, lhb_stock_history]
+    group: capital
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_DAILYBILLBOARD_PROFILE, filter: '(SECURITY_CODE="{code}")', sort_columns: TRADE_DATE, sort_types: -1, page_size: page_size}, row: all, priority: 1}
+
+  - id: lhb_stock_stat
+    name: 个股龙虎榜统计
+    aliases: [个股上榜统计, 龙虎榜统计, lhb_stock_stat]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    calibrations:
+      cycle: {values: ['1m', '3m', '6m', '1y'], default: 3m, maps: {'1m': '01', '3m': '02', '6m': '03', '1y': '04'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_BILLBOARD_TRADEALLNEW, filter: '(STATISTICS_CYCLE="{cycle_field}")', sort_columns: BILLBOARD_TIMES, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: lhb_org_daily
+    name: 机构买卖每日统计
+    aliases: [机构买卖每日统计, 机构买卖情况, lhb_org_daily]
+    group: capital
+    kind: table
+    args: {date_from: {required: true}, page_size: {required: false}, page: {required: false}}
+    calibrations:
+      market: {values: [all, sha, kcb, sza, cyb, bja, kzz], default: all, maps: {all: '', sha: '(TRADE_MARKET_CODE in ("069001001001","069001001006","069001001003"))', kcb: '(TRADE_MARKET_CODE="069001001006")', sza: '(TRADE_MARKET_CODE in ("069001002001","069001002002","069001002005"))', cyb: '(TRADE_MARKET_CODE="069001002002")', bja: '(TRADE_MARKET_CODE="069001017")', kzz: '(SECURITY_TYPE_CODE="060")'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_ORGANIZATION_TRADE_DETAILSNEW, filter: "(TRADE_DATE>='{date_from}'){market_field}", sort_columns: NET_BUY_AMT, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: lhb_org_seat
+    name: 机构席位追踪
+    aliases: [机构席位追踪, 机构席位买卖追踪, lhb_org_seat]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    calibrations:
+      cycle: {values: ['1m', '3m', '6m', '1y'], default: 3m, maps: {'1m': '01', '3m': '02', '6m': '03', '1y': '04'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_ORGANIZATION_SEATNEW, filter: '(STATISTICSCYCLE="{cycle_field}")', sort_columns: ONLIST_TIMES, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: lhb_active_dept
+    name: 每日活跃营业部
+    aliases: [每日活跃营业部, 活跃营业部, lhb_active_dept]
+    group: capital
+    kind: table
+    args: {date_from: {required: true}, page_size: {required: false}, page: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_OPERATEDEPT_ACTIVE, filter: "(ONLIST_DATE>='{date_from}')", sort_columns: TOTAL_NETAMT, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: lhb_dept_return_rank
+    name: 营业部回报排行
+    aliases: [营业部回报排行, 营业部回报, lhb_dept_return_rank]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    calibrations:
+      cycle: {values: ['1m', '3m', '6m', '1y'], default: 3m, maps: {'1m': '01', '3m': '02', '6m': '03', '1y': '04'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_RATEDEPT_RETURNT_RANKING, filter: '(STATISTICSCYCLE="{cycle_field}")', sort_columns: TOTAL_BUYER_SALESTIMES_1DAY, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: lhb_dept_stat
+    name: 证券营业部上榜统计
+    aliases: [证券营业部上榜统计, 营业部上榜统计, lhb_dept_stat]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    calibrations:
+      cycle: {values: ['1m', '3m', '6m', '1y'], default: 3m, maps: {'1m': '01', '3m': '02', '6m': '03', '1y': '04'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_OPERATEDEPT_LIST_STATISTICS, filter: '(STATISTICSCYCLE="{cycle_field}")', sort_columns: AMOUNT, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: lhb_dept_query
+    name: 证券公司营业部查询
+    aliases: [营业部查询, 证券公司查询, lhb_dept_query]
+    group: capital
+    kind: table
+    args: {pinyin: {required: false}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_OPERATEDEPT_NAME, filter: '(ORGNAME_PINYIN="{pinyin}")', sort_columns: ORGNAME_PINYIN, sort_types: 1, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPT_OPERATEDEPT_NAME, sort_columns: ORGNAME_PINYIN, sort_types: 1, page_size: page_size}, row: all, priority: 2}
+
+  - id: lhb_dept_detail
+    name: 营业部上榜明细
+    aliases: [营业部上榜明细, 营业部明细, lhb_dept_detail]
+    group: capital
+    kind: table
+    args: {dept_code: {required: true}, page_size: {required: false}, page: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_OPERATEDEPT_TRADE_DETAILSNEW, filter: '(OPERATEDEPT_CODE="{dept_code}")', sort_columns: TRADE_DATE, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: lhb_date_windows
+    name: 龙虎榜区间日期
+    aliases: [龙虎榜日期窗口, 龙虎榜区间日期, lhb_date_windows]
+    group: capital
+    kind: table
+    args: {}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_ORGANIZATION_DATE, sort_columns: NEWDATE, sort_types: -1}, row: all, priority: 1}
+
+  - id: margin_balance
+    name: 融资余额
+    aliases: [融资余额, 融资]
+    group: capital
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers:
+      - {endpoint: dc.get, field: RZYE, args: {report: RPTA_WEB_RZRQ_GGMX, filter: "(SCODE=\"{code}\")", sort_columns: DATE, page_size: 5}, row: first, priority: 1}
+
+  - id: securities_loan_balance
+    name: 融券余额
+    aliases: [融券余额, 融券]
+    group: capital
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers:
+      - {endpoint: dc.get, field: RQYL, args: {report: RPTA_WEB_RZRQ_GGMX, filter: "(SCODE=\"{code}\")", sort_columns: DATE, page_size: 5}, row: first, priority: 1}
+
+  - id: margin_sum
+    name: 两融余额合计
+    aliases: [两融余额, 两融合计]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_RZRQ_LSHJ, sort_columns: DIM_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: margin_market_total
+    name: 融资融券交易总量
+    aliases: [两融交易总量, 市场交易总量, margin_market_total]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      market: {values: [all, sh, sz, bj], default: all, maps: {all: "", sh: "(SCDM=007)", sz: "(SCDM=001)", bj: "(SCDM=002)"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_RZRQ_LSHJ, filter: "{market_field}", sort_columns: DIM_DATE, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_RZRQ_LSSH, filter: "{market_field}", sort_columns: DIM_DATE, page_size: page_size}, row: all, priority: 2}
+
+  - id: margin_history
+    name: 融资融券历史数据
+    aliases: [两融历史数据, 融资融券历史, margin_history]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_RZRQ_LSDB, sort_columns: DIM_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: margin_board_rank
+    name: 板块融资融券排行
+    aliases: [板块两融排行, 板块融资融券排行, margin_board_rank]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      board: {values: [hy, gn, dy], default: hy, maps: {hy: "005", gn: "006", dy: "004"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_BKJYMXN, filter: "(BOARD_TYPE_CODE=\"{board_field}\")", sort_columns: FIN_NETBUY_AMT, page_size: page_size}, row: all, priority: 1}
+
+  - id: margin_board_rank_range
+    name: 板块融资融券排行（区间）
+    aliases: [板块两融区间排行, 板块融资融券区间排行, margin_board_rank_range]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      board: {values: [hy, gn, dy], default: hy, maps: {hy: "005", gn: "006", dy: "004"}}
+      interval: {values: [3日, 5日, 10日], default: 3日}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_BKQJYMXN, filter: "(BOARD_TYPE_CODE=\"{board_field}\")(INTERVAL_TYPE=\"{interval}\")", sort_columns: FIN_NETBUY_AMT, page_size: page_size}, row: all, priority: 1}
+
+  - id: margin_board_detail
+    name: 板块融资融券明细
+    aliases: [板块两融明细, 板块融资融券明细, margin_board_detail]
+    group: capital
+    kind: table
+    args: {board_code: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_BKJYMX, filter: "(BOARD_CODE=\"{board_code}\")", sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: margin_board_member
+    name: 板块成分股两融（今日）
+    aliases: [板块个股两融, margin_board_member]
+    group: capital
+    kind: table
+    args: {board_code: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_GGJYMX, filter: "(BOARD_CODE=\"{board_code}\")", sort_columns: FIN_NETBUY_AMT, page_size: page_size}, row: all, priority: 1}
+
+  - id: margin_board_member_range
+    name: 板块成分股两融（区间）
+    aliases: [板块个股两融区间, margin_board_member_range]
+    group: capital
+    kind: table
+    args: {board_code: {required: true}, page_size: {required: false}}
+    calibrations:
+      interval: {values: [3日, 5日, 10日], default: 3日}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_GGQJJYMX, filter: "(BOARD_CODE=\"{board_code}\")(INTERVAL_TYPE=\"{interval}\")", sort_columns: FIN_NETBUY_AMT, page_size: page_size}, row: all, priority: 1}
+
+  - id: margin_detail
+    name: 融资融券交易明细
+    aliases: [两融交易明细, 融资融券明细, margin_detail]
+    group: capital
+    kind: table
+    args: {trade_date: {required: false}, page_size: {required: false}}
+    calibrations:
+      market: {values: [all, hs_a, sh_a, kcb, sz_a, cyb, bj_a, etf], default: all, maps: {all: "", hs_a: '(TRADE_MARKET_CODE in ("069001001001","069001001006","069001002001","069001002002","069001002003"))', sh_a: '(TRADE_MARKET_CODE in ("069001001001","069001001006"))', kcb: '(TRADE_MARKET_CODE="069001001006")', sz_a: '(TRADE_MARKET_CODE in ("069001002001","069001002002","069001002003"))', cyb: '(TRADE_MARKET_CODE="069001002002")', bj_a: '(TRADE_MARKET_CODE="069001017")', etf: '(TRADE_MARKET_CODE in ("069001001","069001002"))'}}
+      interval: {values: [today, 3d, 5d, 10d], default: today, maps: {today: "", 3d: "3D", 5d: "5D", 10d: "10D"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_RZRQ_GGMX, filter: "(DATE='{trade_date}'){market_field}", sort_columns: "RZJME{interval_field}", page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_RZRQ_GGMX, filter: "{market_field}", sort_columns: "DATE,RZJME{interval_field}", sort_types: "-1,-1", page_size: page_size}, row: all, priority: 2}
+
+  - id: margin_top_net_buy
+    name: 融资净买入前十大证券
+    aliases: [融资净买入前十, margin_top_net_buy]
+    group: capital
+    kind: table
+    args: {trade_date: {required: false}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_RZRQ_GGMX, filter: "(DATE='{trade_date}')", sort_columns: RZJME, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_RZRQ_GGMX, sort_columns: "DATE,RZJME", sort_types: "-1,-1", page_size: page_size}, row: all, priority: 2}
+
+  - id: margin_stock_history
+    name: 个股融资融券历史
+    aliases: [个股两融历史, 融资融券个股历史, margin_stock_history]
+    group: capital
+    kind: series
+    args: {code: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_RZRQ_GGMX, filter: "(SCODE=\"{code}\")", sort_columns: DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: margin_account_stat
+    name: 两融账户信息（日度）
+    aliases: [两融账户统计, 两融账户信息日度, margin_account_stat]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_MARGIN_DAILYTRADE, sort_columns: STATISTICS_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: margin_account_stat_month
+    name: 两融账户信息（月度）
+    aliases: [两融账户月度, 两融账户信息月度, margin_account_stat_month]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_MARGIN_MONTHTRADE, sort_columns: STATISTICS_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: stock_data_flags
+    name: 个股数据中心入口标记
+    aliases: [数据模块标记, 个股数据标记, stock_data_flags]
+    group: capital
+    kind: table
+    args: {code: {required: true}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_STOCK_HEADERCHANGE, filter: "(SECURITY_CODE=\"{code}\")", page_size: 1}, row: all, priority: 1}
+
+  - id: hsgt_top10
+    name: 沪深港通十大成交股
+    aliases: [十大成交股, 十大活跃成交股, hsgt_top10]
+    group: capital
+    kind: table
+    args: {trade_date: {required: false}, page_size: {required: false}}
+    calibrations:
+      mutual: {values: [sh, sz, hk_sh, hk_sz], default: sh, maps: {sh: "001", sz: "003", hk_sh: "002", hk_sz: "004"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_TOP10DEAL, filter: "(MUTUAL_TYPE=\"{mutual_field}\")(TRADE_DATE='{trade_date}')", sort_columns: RANK, sort_types: 1, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_TOP10DEAL, filter: "(MUTUAL_TYPE=\"{mutual_field}\")", sort_columns: "TRADE_DATE,RANK", sort_types: "-1,1", page_size: page_size}, row: all, priority: 2}
+
+  - id: hsgt_channel_history
+    name: 沪深港通历史数据
+    aliases: [沪深港通历史, 港通历史数据, hsgt_channel_history]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      mutual: {values: [north, sh, sz, south, hk_sh, hk_sz], default: north, maps: {north: "005", sh: "001", sz: "003", south: "006", hk_sh: "002", hk_sz: "004"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_DEAL_HISTORY, filter: "(MUTUAL_TYPE=\"{mutual_field}\")", sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_north_stock_hold_rank
+    name: 北向个股持股排行
+    aliases: [北向个股排行, 北向持股排行, hsgt_north_stock_hold_rank]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      mutual: {values: [sh, sz], default: sh, maps: {sh: "001", sz: "003"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_HOLDRANK_NEW, filter: "(MUTUAL_TYPE=\"{mutual_field}\")", sort_columns: HOLD_MARKET_CAP, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_south_stock_hold_rank
+    name: 南向个股持股排行
+    aliases: [南向个股排行, 南向持股排行, hsgt_south_stock_hold_rank]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      mutual: {values: [south, hk_sh, hk_sz], default: south, maps: {south: '(INTERVAL_TYPE="1")(RN=1)', hk_sh: '(INTERVAL_TYPE="1")(MUTUAL_TYPE="002")', hk_sz: '(INTERVAL_TYPE="1")(MUTUAL_TYPE="004")'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_STOCK_HOLDRANKS, filter: "{mutual_field}", sort_columns: ADD_MARKET_CAP, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_org_rank
+    name: 沪深港通机构季度排行
+    aliases: [机构季度排行, 北向机构排行, hsgt_org_rank]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      mutual: {values: [sh, sz], default: sh, maps: {sh: "001", sz: "003"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_NORTH_ORG_HOLDRANK_NEW, filter: "(MUTUAL_TYPE=\"{mutual_field}\")", sort_columns: HOLD_MARKET_CAP, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_board_rank
+    name: 北向增持板块排行
+    aliases: [北向增持板块, 板块季度排行, hsgt_board_rank]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      board: {values: [hy, gn, dy], default: hy, maps: {hy: "5", gn: "4", dy: "3"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_BOARD_HOLDRANK_NEW, filter: "(BOARD_TYPE=\"{board_field}\")", sort_columns: HOLD_MARKET_CAP, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_board_hold_history
+    name: 板块沪深港通持股历史
+    aliases: [板块港通持股, hsgt_board_hold_history]
+    group: capital
+    kind: table
+    args: {board_code: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_BOARD_HOLDRANK_NEW, filter: "(BOARD_CODE=\"{board_code}\")", sort_columns: HOLD_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_board_member_hold
+    name: 板块成分股沪深港通持股
+    aliases: [板块成分股港通持股, hsgt_board_member_hold]
+    group: capital
+    kind: table
+    args: {board_code: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_NORTH_BOARD_HOLDDETAIL_NEW, filter: "(BOARD_CODE=\"{board_code}\")", page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_org_hold_stat
+    name: 沪深港通机构持股统计
+    aliases: [机构持股统计, 机构港通持股统计, hsgt_org_hold_stat]
+    group: capital
+    kind: table
+    args: {participant_code: {required: true}, date_from: {required: false}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: PRT_MUTUAL_ORG_STA, filter: "(PARTICIPANT_CODE=\"{participant_code}\")(HOLD_DATE>='{date_from}')", sort_columns: HOLD_DATE, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: PRT_MUTUAL_ORG_STA, filter: "(PARTICIPANT_CODE=\"{participant_code}\")", sort_columns: HOLD_DATE, page_size: page_size}, row: all, priority: 2}
+
+  - id: hsgt_org_hold_detail
+    name: 沪深港通机构持股明细
+    aliases: [机构持股明细, 机构港通持股明细, hsgt_org_hold_detail]
+    group: capital
+    kind: table
+    args: {participant_code: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_NORTH_ORG_HOLDDETAIL_NEW, filter: "(PARTICIPANT_CODE=\"{participant_code}\")", page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_stock_deal
+    name: 个股沪深港通成交榜
+    aliases: [个股港通成交, 个股成交榜详情, hsgt_stock_deal]
+    group: capital
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_TOP10DEAL, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPT_HK_DEAL_RANK, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 2}
+
+  - id: hsgt_north_accum_netbuy
+    name: 北向累计净买入
+    aliases: [北向累计净买入, hsgt_north_accum_netbuy]
+    group: capital
+    kind: series
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_NORTH_ACCUM_NETBUY, filter: '(DATE_TYPE_CODE="001")', sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_south_accum_netbuy
+    name: 南向累计净买入
+    aliases: [南向累计净买入, hsgt_south_accum_netbuy]
+    group: capital
+    kind: series
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_SOUTH_ACCUM_NETBUY, filter: '(DATE_TYPE_CODE="001")', sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_hold_dates
+    name: 沪深港通持股日期窗口
+    aliases: [港通持股日期, 北向机构持股日期, hsgt_hold_dates]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      mutual: {values: [south, north], default: south, maps: {south: "S", north: "N"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_TRADEDATE, filter: "(MUTUAL_TYPE=\"{mutual_field}\")", sort_columns: HOLD_DATE, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPT_NORTH_ORG_HOLDRANKDATE, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 2}
+
+  - id: hsgt_deal_num
+    name: 沪深港通成交笔数
+    aliases: [港通成交笔数, hsgt_deal_num]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_DEALAMT, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_deal_num_month
+    name: 沪深港通月度成交
+    aliases: [港通月度成交, hsgt_deal_num_month]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_DEALAMT_MONTHS, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_net_inflow_stat
+    name: 沪深港通净流入统计
+    aliases: [北向净流入统计, 南向净流入统计, hsgt_net_inflow_stat]
+    group: capital
+    kind: table
+    unit: 万元
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_NETINFLOW_STATISTICS, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_net_inflow_history
+    name: 沪深港通净流入序列
+    aliases: [北向净流入, 南向净流入, hsgt_net_inflow_history]
+    group: capital
+    kind: table
+    unit: 万元
+    args: {page_size: {required: false}}
+    calibrations:
+      mutual: {values: [south, north], default: south, maps: {south: "2", north: "1"}}
+      interval: {values: [today, d5, d20, hist], default: today, maps: {today: "1", d5: "2", d20: "3", hist: "4"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_NETINFLOW_DETAILS, filter: "(DIRECTION_TYPE=\"{mutual_field}\")(TIME_TYPE=\"{interval_field}\")", sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: hsgt_net
+    name: 沪深港通当日成交净买额
+    aliases: [北向资金, 港通净额, 沪深港通, hsgt_net]
+    group: capital
+    kind: scalar
+    unit: 万元
+    args: {page_size: {required: false}}
+    calibrations:
+      mutual: {values: [south, north], default: south, maps: {south: "006", north: "005"}}
+    providers:
+      - {endpoint: dc.get, field: NET_DEAL_AMT, args: {report: RPT_MUTUAL_DEAL_HISTORY, filter: "(MUTUAL_TYPE=\"{mutual_field}\")", sort_columns: TRADE_DATE, page_size: 1}, row: first, priority: 1}
+
+  - id: hsgt_quota
+    name: 沪深港通额度
+    aliases: [北向额度, 港通额度]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_QUOTA, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: block_trade
+    name: 大宗交易
+    aliases: [大宗, block_trade]
+    group: capital
+    kind: table
+    args: {code: {required: false}, page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_DATA_BLOCKTRADE, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  # 大宗交易子页（report/filter/sort 取自 data.eastmoney.com/newstatic/js/dzjy/*.js）
+  - id: block_trade_stat
+    name: 大宗交易市场统计
+    aliases: [大宗交易市场统计, 大宗市场统计, block_trade_stat]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: PRT_BLOCKTRADE_MARKET_STA, sort_columns: TRADE_DATE, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: block_trade_detail
+    name: 大宗交易每日明细
+    aliases: [大宗交易每日明细, 大宗交易明细, block_trade_detail]
+    group: capital
+    kind: table
+    args: {date_from: {required: true}, page_size: {required: false}, page: {required: false}}
+    calibrations:
+      sec_type: {values: [a, b, fund, bond], default: a, maps: {a: '1', b: '2', fund: '3', bond: '4'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_DATA_BLOCKTRADE, filter: "(SECURITY_TYPE_WEB=\"{sec_type_field}\")(TRADE_DATE>='{date_from}')", sort_columns: SECURITY_CODE, sort_types: 1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: block_trade_daily_stat
+    name: 大宗交易每日统计
+    aliases: [大宗交易每日统计, 大宗每日统计, block_trade_daily_stat]
+    group: capital
+    kind: table
+    args: {date_from: {required: true}, page_size: {required: false}, page: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_BLOCKTRADE_STAINCLUDE, filter: "(TRADE_DATE>='{date_from}')", sort_columns: TURNOVERRATE, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: block_trade_active_stock
+    name: 大宗交易活跃A股统计
+    aliases: [大宗交易活跃A股, 活跃A股统计, block_trade_active_stock]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    calibrations:
+      cycle: {values: ['1m', '3m', '6m', '1y'], default: 3m, maps: {'1m': '1', '3m': '3', '6m': '6', '1y': '12'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_BLOCKTRADE_ACSTA, filter: '(DATE_TYPE_CODE="{cycle_field}")', sort_columns: DEAL_NUM, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: block_trade_active_dept
+    name: 大宗交易活跃营业部统计
+    aliases: [大宗交易活跃营业部, 活跃营业部统计, block_trade_active_dept]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    calibrations:
+      window: {values: [today, 3d, 5d, 10d, 30d], default: today, maps: {today: '0', 3d: '-3', 5d: '-5', 10d: '-10', 30d: '-30'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_BLOCKTRADE_OPERATEDEPTSTATISTICS, filter: '(N_DATE={window_field})', sort_columns: BUYER_NUM, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: block_trade_dept_rank
+    name: 大宗交易营业部排行
+    aliases: [大宗交易营业部排行, 大宗营业部排行, block_trade_dept_rank]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    calibrations:
+      cycle: {values: ['1m', '3m', '6m', '1y'], default: 3m, maps: {'1m': '-30', '3m': '-90', '6m': '-180', '1y': '-360'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_BLOCKTRADE_OPERATEDEPT_RANK, filter: '(N_DATE={cycle_field})', sort_columns: D5_BUYER_NUM, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: block_trade_dept_query
+    name: 大宗交易营业部查询
+    aliases: [大宗交易营业部查询, 大宗营业部查询, block_trade_dept_query]
+    group: capital
+    kind: table
+    args: {pinyin: {required: false}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_BLOCKTRADE_OPERATEDEPT_NAME, columns: "ORG_CODE,ORG_NAME_ABBR,ORGNAME_PINYIN,ORG_RN,OPERATEDEPT_SPLICING", filter: '(ORGNAME_PINYIN="{pinyin}")', sort_columns: ORGNAME_PINYIN, sort_types: 1, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPT_BLOCKTRADE_OPERATEDEPT_NAME, columns: "ORG_CODE,ORG_NAME_ABBR,ORGNAME_PINYIN,ORG_RN,OPERATEDEPT_SPLICING", sort_columns: ORGNAME_PINYIN, sort_types: 1, page_size: page_size}, row: all, priority: 2}
+
+  - id: block_trade_dept_detail
+    name: 营业部大宗交易明细
+    aliases: [营业部大宗交易明细, 大宗营业部明细, block_trade_dept_detail]
+    group: capital
+    kind: table
+    args: {dept_code: {required: true}, page_size: {required: false}, page: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_DATA_BLOCKTRADE, filter: '(BUYER_CODE="{dept_code}")', sort_columns: TRADE_DATE, sort_types: -1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: pledge_ratio
+    name: 股权质押比例
+    aliases: [质押比例, 质押率]
+    group: capital
+    kind: scalar
+    unit: "%"
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: PLEDGE_RATIO, args: {report: RPT_CSDC_LIST_NEWEST, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: TRADE_DATE, page_size: 1}, row: first, priority: 1}]
+
+  - id: holder_num
+    name: 股东户数
+    aliases: [股东户数, 股东人数]
+    group: capital
+    kind: scalar
+    unit: 户
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: HOLDER_NUM, args: {report: RPT_HOLDERNUMLATEST, filter: "(SECURITY_CODE=\"{code}\")", page_size: 1}, row: first, priority: 1}]
+
+  - id: account_stat
+    name: 股票账户统计
+    aliases: [开户数, 账户统计]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_CSDC_STATISTICS, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  # =====================================================================
+  # 财务
+  # =====================================================================
+  - id: eps
+    name: 每股收益
+    aliases: [每股收益, EPS]
+    group: finance
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}, report_date: {required: false}}
+    providers: [{endpoint: dc.get, field: BASIC_EPS, args: {report: RPT_LICO_FN_CPD, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORTDATE, page_size: 5}, row: first, priority: 1}]
+
+  - id: bps
+    name: 每股净资产
+    aliases: [每股净资产, BPS]
+    group: finance
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: BPS, args: {report: RPT_LICO_FN_CPD, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORTDATE, page_size: 5}, row: first, priority: 1}]
+
+  - id: revenue
+    name: 营业收入
+    aliases: [营收, revenue, 总收入]
+    group: finance
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: TOTAL_OPERATE_INCOME, args: {report: RPT_LICO_FN_CPD, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORTDATE, page_size: 5}, row: first, priority: 1}]
+
+  - id: net_profit
+    name: 净利润
+    aliases: [净利润, 归母净利润, profit]
+    group: finance
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: PARENT_NETPROFIT, args: {report: RPT_LICO_FN_CPD, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORTDATE, page_size: 5}, row: first, priority: 1}]
+
+  - id: roe
+    name: 净资产收益率
+    aliases: [净资产收益率, ROE]
+    group: finance
+    kind: scalar
+    unit: "%"
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: WEIGHTAVG_ROE, args: {report: RPT_LICO_FN_CPD, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORTDATE, page_size: 5}, row: first, priority: 1}]
+
+  - id: gross_margin
+    name: 销售毛利率
+    aliases: [毛利率, gross_margin]
+    group: finance
+    kind: scalar
+    unit: "%"
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: XSMLL, args: {report: RPT_LICO_FN_CPD, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORTDATE, page_size: 5}, row: first, priority: 1}]
+
+  - id: ocfps
+    name: 每股经营现金流
+    aliases: [每股现金流, ocfps]
+    group: finance
+    kind: scalar
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: MGJYXJJE, args: {report: RPT_LICO_FN_CPD, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORTDATE, page_size: 5}, row: first, priority: 1}]
+
+  - id: yoy_revenue
+    name: 营收同比增长
+    aliases: [营收同比]
+    group: finance
+    kind: scalar
+    unit: "%"
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: YSHZ, args: {report: RPT_LICO_FN_CPD, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORTDATE, page_size: 5}, row: first, priority: 1}]
+
+  - id: yoy_net_profit
+    name: 净利润同比增长
+    aliases: [净利润同比, 净利同比]
+    group: finance
+    kind: scalar
+    unit: "%"
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: SJLHZ, args: {report: RPT_LICO_FN_CPD, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORTDATE, page_size: 5}, row: first, priority: 1}]
+
+  - id: financial_indicators
+    name: 财务指标（全表）
+    aliases: [财务指标, 主要指标]
+    group: finance
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_LICO_FN_CPD, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORTDATE, page_size: 10}, row: all, priority: 1}]
+
+  - id: balance_sheet
+    name: 资产负债表
+    aliases: [资产负债表, 负债表]
+    group: finance
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_DMSK_FN_BALANCE, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORT_DATE, page_size: 10}, row: all, priority: 1}]
+
+  - id: income_statement
+    name: 利润表
+    aliases: [利润表, 损益表]
+    group: finance
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_DMSK_FN_INCOME, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORT_DATE, page_size: 10}, row: all, priority: 1}]
+
+  - id: cashflow_statement
+    name: 现金流量表
+    aliases: [现金流量表, 现金流]
+    group: finance
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_DMSK_FN_CASHFLOW, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORT_DATE, page_size: 10}, row: all, priority: 1}]
+
+  - id: forecast
+    name: 业绩预告
+    aliases: [业绩预告, 预告]
+    group: finance
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_PUBLIC_OP_NEWPREDICT, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: NOTICE_DATE, page_size: 10}, row: all, priority: 1}]
+
+  - id: express
+    name: 业绩快报
+    aliases: [业绩快报, 快报]
+    group: finance
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_FCI_PERFORMANCEE, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORT_DATE, page_size: 10}, row: all, priority: 1}]
+
+  - id: disclose_plan
+    name: 预约披露
+    aliases: [预约披露, 披露时间]
+    group: finance
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_PUBLIC_BS_APPOIN, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: FIRST_APPOINT_DATE, page_size: 10}, row: all, priority: 1}]
+
+  - id: dividend
+    name: 分红送配
+    aliases: [分红, 送配, dividend]
+    group: finance
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_SHAREBONUS_DET, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORT_DATE, page_size: 10}, row: all, priority: 1}]
+
+  - id: unlock
+    name: 限售解禁
+    aliases: [解禁, 限售股, unlock]
+    group: finance
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_LIFT_STAGE, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: FREE_DATE, page_size: 10}, row: all, priority: 1}]
+
+  - id: survey
+    name: 机构调研
+    aliases: [调研, 机构调研]
+    group: finance
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_ORG_SURVEYNEW, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: RECEIVE_START_DATE, page_size: 10}, row: all, priority: 1}]
+
+  - id: rating
+    name: 机构评级
+    aliases: [评级, 研报评级]
+    group: finance
+    kind: table
+    args: {code: {required: false}, page_size: {required: false}}
+    providers: [{endpoint: news.reports, field: "", args: {page_size: page_size}, row: all, priority: 1}]
+
+  # =====================================================================
+  # F10 公司资料
+  # =====================================================================
+  - id: profile_basic
+    name: 公司概况
+    aliases: [公司概况, 基本信息, 企业信息]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_ORG_BASICINFO, filter: "(SECUCODE=\"{secucode}\")", page_size: 1}, row: all, priority: 1}]
+
+  - id: shareholders
+    name: 十大股东
+    aliases: [十大股东, 股东]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_EH_HOLDERS, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: free_shareholders
+    name: 十大流通股东
+    aliases: [流通股东, 十大流通股东]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_EH_FREEHOLDERS, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: holder_num_change
+    name: 股东户数变动
+    aliases: [股东户数变动, 户数变化]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_EH_HOLDERNUM, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: capital_structure
+    name: 股本结构
+    aliases: [股本结构, 股本]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_EH_EQUITY, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: finance_main
+    name: 主要财务指标
+    aliases: [财务指标, 主要指标]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_FINANCE_MAINFINADATA, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: finance_dupont
+    name: 杜邦分析
+    aliases: [杜邦分析, 杜邦]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_FINANCE_DUPONT, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: concept
+    name: 所属概念
+    aliases: [所属概念, 题材, concept]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: ssbk, args: {code: code, module: f10_concept}, row: all, priority: 1}]
+
+  - id: institutional_holding
+    name: 机构持股
+    aliases: [机构持股, 股东研究]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: jgcc, args: {code: code, module: f10_holding}, row: all, priority: 1}]
+
+  - id: major_event
+    name: 重大事项
+    aliases: [重大事项, 诉讼处罚]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: dstx, args: {code: code, module: f10_event}, row: all, priority: 1}]
+
+  - id: executives
+    name: 高管简历
+    aliases: [高管, 管理层]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: gglb, args: {code: code, module: f10_management}, row: all, priority: 1}]
+
+  - id: equity_incentive
+    name: 股权激励
+    aliases: [股权激励, 员工持股]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_EQUITY_INCENTIVE, filter: "(SECUCODE=\"{secucode}\")", sort_columns: LASTEST_NOTICE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: financing_history
+    name: 融资历史
+    aliases: [融资历史, 募资]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: mjzjly, args: {code: code, module: f10_capital_op}, row: all, priority: 1}]
+
+  - id: dividend_financing
+    name: 分红融资
+    aliases: [分红融资, 分红历史]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: lnfhrz, args: {code: code, module: f10_bonus}, row: all, priority: 1}]
+
+  - id: industry_compare
+    name: 行业对比
+    aliases: [行业对比, 同行对比]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: czxbj, args: {code: code, module: f10_industry}, row: all, priority: 1}]
+
+  - id: industry_rank
+    name: 同行业个股排名
+    aliases: [同行业个股排名, 行业个股排名, 关联个股, related_company]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: ggpm, args: {code: code, module: f10_relation}, row: all, priority: 1}]
+
+  - id: valuation_analysis
+    name: 估值分析
+    aliases: [估值分析, 估值]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: gzbj, args: {code: code, module: f10_industry}, row: all, priority: 1}]
+
+  - id: foreign_profile
+    name: 港股/美股公司概况
+    aliases: [港股概况, 美股概况]
+    group: f10
+    kind: table
+    args: {secucode: {required: true}}
+    providers: [{endpoint: f10.foreign, field: "", args: {secucode: secucode}, priority: 1}]
+
+  # =====================================================================
+  # 资讯
+  # =====================================================================
+  - id: announcements
+    name: 公告列表
+    aliases: [公告, 公司公告]
+    group: news
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: news.announcements, field: "", args: {ann_type: A, page_size: page_size}, row: all, priority: 1}]
+
+  - id: announcement_content
+    name: 公告正文
+    aliases: [公告正文]
+    group: news
+    kind: table
+    args: {art_code: {required: true}}
+    providers: [{endpoint: news.announcement_content, field: "", args: {art_code: art_code}, priority: 1}]
+
+  - id: reports
+    name: 研报列表
+    aliases: [研报, 研究报告]
+    group: news
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: news.reports, field: "", args: {page_size: page_size}, row: all, priority: 1}]
+
+  - id: report_content
+    name: 研报正文
+    aliases: [研报正文]
+    group: news
+    kind: table
+    args: {info_code: {required: true}}
+    providers: [{endpoint: news.report_content, field: "", args: {info_code: info_code}, priority: 1}]
+
+  - id: flash_news
+    name: 财经快讯
+    aliases: [快讯, 7x24]
+    group: news
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: news.flash, field: "", args: {page_size: page_size}, row: all, priority: 1}]
+
+  - id: news
+    name: 财经新闻
+    aliases: [新闻, 财经新闻]
+    group: news
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: news.news, field: "", args: {page_size: page_size}, row: all, priority: 1}]
+
+  - id: new_stock
+    name: 新股申购
+    aliases: [新股, 打新, 新股日历]
+    group: news
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPTA_APP_IPOAPPLY, sort_columns: APPLY_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: convertible_bond
+    name: 可转债申购
+    aliases: [可转债, 转债申购, 可转债申购, cb]
+    group: news
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_BOND_CB_LIST, sort_columns: PUBLIC_START_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  # =====================================================================
+  # 基金
+  # =====================================================================
+  - id: fund_codes
+    name: 基金代码表
+    aliases: [基金, fund_codes]
+    group: fund
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: fund.codes, field: "", args: {page_size: page_size}, row: all, priority: 1}]
+
+  - id: fund_nav
+    name: 基金净值
+    aliases: [净值, 单位净值, fund_nav]
+    group: fund
+    kind: series
+    unit: 元
+    args: {code: {required: true}}
+    providers: [{endpoint: fund.nav, field: "", args: {code: code, page_size: 10}, row: all, priority: 1}]
+
+  - id: fund_holding
+    name: 基金持仓
+    aliases: [基金持仓, 重仓股]
+    group: fund
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: fund.holding, field: "", args: {code: code}, row: all, priority: 1}]
+
+  - id: fund_manager
+    name: 基金经理
+    aliases: [基金经理, 管理人]
+    group: fund
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: fund.manager, field: "", args: {code: code}, priority: 1}]
+
+  - id: fund_rank
+    name: 基金排行
+    aliases: [基金排行, 基金排名]
+    group: fund
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: fund.rank, field: "", args: {dt: kf, page_size: page_size}, row: all, priority: 1}]
+
+  - id: etf_lof
+    name: ETF/LOF 场内基金
+    aliases: [etf, lof, 场内基金]
+    group: fund
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: quote.clist, field: "", args: {fs: "b:MK0021,b:MK0022,b:MK0023", page_size: page_size}, row: all, priority: 1}]
+
+  - id: fund_report_pdf
+    name: 基金定期报告PDF
+    aliases: [基金报告, 基金PDF]
+    group: fund
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: fund.report_pdf, field: "", args: {fund_code: code, page_size: 5}, row: all, priority: 1}]
+
+  # =====================================================================
+  # 宏观
+  # =====================================================================
+  - id: cpi
+    name: 居民消费价格指数（CPI）
+    aliases: [CPI, 居民消费价格指数]
+    group: macro
+    kind: series
+    unit: "%"
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: cpi, page_size: page_size}, row: all, priority: 1}]
+
+  - id: ppi
+    name: 工业生产者出厂价格指数（PPI）
+    aliases: [PPI, 工业品价格]
+    group: macro
+    kind: series
+    unit: "%"
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: ppi, page_size: page_size}, row: all, priority: 1}]
+
+  - id: pmi
+    name: 制造业PMI
+    aliases: [PMI, 采购经理指数]
+    group: macro
+    kind: series
+    unit: "%"
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: pmi, page_size: page_size}, row: all, priority: 1}]
+
+  - id: gdp
+    name: 国内生产总值（GDP）
+    aliases: [GDP, 国内生产总值]
+    group: macro
+    kind: series
+    unit: "%"
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: gdp, page_size: page_size}, row: all, priority: 1}]
+
+  - id: m2
+    name: 货币供应量（M2）
+    aliases: [M2, 货币供应量]
+    group: macro
+    kind: series
+    unit: "%"
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: m2, page_size: page_size}, row: all, priority: 1}]
+
+  - id: lpr
+    name: 贷款市场报价利率（LPR）
+    aliases: [LPR, 贷款基准利率]
+    group: macro
+    kind: series
+    unit: "%"
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: lpr, page_size: page_size}, row: all, priority: 1}]
+
+  - id: fiscal
+    name: 财政收支
+    aliases: [财政, 财政收入]
+    group: macro
+    kind: series
+    unit: "%"
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: fiscal, page_size: page_size}, row: all, priority: 1}]
+
+  - id: shzr
+    name: 社会融资规模
+    aliases: [社融, 社会融资]
+    group: macro
+    kind: series
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: shzr, page_size: page_size}, row: all, priority: 1}]
+
+  - id: forex_reserve
+    name: 外汇储备
+    aliases: [外汇储备, 外储]
+    group: macro
+    kind: series
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: forex_reserve, page_size: page_size}, row: all, priority: 1}]
+
+  - id: electricity
+    name: 全社会用电量
+    aliases: [用电量, 电力]
+    group: macro
+    kind: series
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: electricity, page_size: page_size}, row: all, priority: 1}]
+
+  - id: macro_overseas
+    name: 海外宏观经济
+    aliases: [海外宏观, 海外经济]
+    group: macro
+    kind: table
+    args: {economy: {required: false}, page_size: {required: false}}
+    providers: [{endpoint: macro.overseas, field: "", args: {economy: economy, page_size: page_size}, row: all, priority: 1}]
+
+  # =====================================================================
+  # 股吧
+  # =====================================================================
+  - id: guba_posts
+    name: 股吧帖子列表
+    aliases: [股吧帖子, 帖子, 股吧]
+    group: guba
+    kind: table
+    args: {code: {required: true}, page: {required: false}}
+    providers: [{endpoint: guba.posts, field: "", args: {code: code, page: page, limit: 20}, row: all, priority: 1}]
+
+  - id: guba_post_content
+    name: 股吧帖子正文
+    aliases: [帖子正文]
+    group: guba
+    kind: table
+    args: {code: {required: true}, post_id: {required: true}}
+    providers: [{endpoint: guba.post_content, field: "", args: {code: code, post_id: post_id}, priority: 1}]
+
+  - id: guba_comments
+    name: 股吧评论
+    aliases: [评论, 帖子评论]
+    group: guba
+    kind: table
+    args: {code: {required: true}, post_id: {required: true}}
+    providers: [{endpoint: guba.comments, field: "", args: {code: code, post_id: post_id, page: 1}, row: all, priority: 1}]
+
+  - id: guba_rank
+    name: 股吧人气榜
+    aliases: [人气榜, 热度排行]
+    group: guba
+    kind: table
+    args: {ps: {required: false}}
+    providers: [{endpoint: guba.rank, field: "", args: {ps: ps}, row: all, priority: 1}]
+
+  # =====================================================================
+  # 工具
+  # =====================================================================
+  - id: diagnosis
+    name: 个股诊断评分
+    aliases: [诊断, 评分, 个股诊断]
+    group: tool
+    kind: scalar
+    unit: 分
+    args: {code: {required: true}}
+    providers: [{endpoint: tool.diagnosis, field: diagnosis_score, args: {code: code}, priority: 1}]
+
+  - id: interactive
+    name: 互动易问答
+    aliases: [互动, 问董秘, 董秘回复]
+    group: tool
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: tool.interactive, field: "", args: {code: code, page_size: 10}, row: all, priority: 1}]
+
+  - id: main_monitor
+    name: 主力监控
+    aliases: [主力监控, 主力资金]
+    group: tool
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: tool.main_monitor, field: "", args: {page_size: page_size}, row: all, priority: 1}]
+
+  - id: index_valuation
+    name: 指数估值
+    aliases: [指数估值, 估值分位]
+    group: tool
+    kind: table
+    providers: [{endpoint: tool.index_valuation, field: "", args: {}, row: all, priority: 1}]
+
+  - id: fund_calc
+    name: 基金定投计算
+    aliases: [定投, 定投计算器, fund_calculator]
+    group: tool
+    kind: table
+    args: {code: {required: true}, monthly_amount: {required: false}, months: {required: false}, annual_rate: {required: false}}
+    providers: [{endpoint: tool.fund_calc, field: "", args: {fund_code: code, monthly_amount: monthly_amount, months: months, annual_rate: annual_rate}, priority: 1}]
+
+  - id: backtest
+    name: 组合回测
+    aliases: [回测, 组合回测]
+    group: tool
+    kind: table
+    args: {weights: {required: true}, period_returns: {required: true}}
+    providers: [{endpoint: tool.backtest, field: "", args: {weights: weights, period_returns: period_returns}, priority: 1}]
+
+  - id: finance_infographic
+    name: 财报图解
+    aliases: [财报图解, 财报图]
+    group: tool
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: tool.finance_infographic, field: "", args: {code: code}, priority: 1}]
+
+  # =====================================================================
+  # 数据中心批量事件
+  # =====================================================================
+  - id: stock_comment
+    name: 千股千评
+    aliases: [千股千评, 股票评论]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_DMSK_TS_STOCKNEW, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: hsgt_hold
+    name: 沪深港通持股
+    aliases: [港通持股, 北向持股]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_MUTUAL_HOLD, sort_columns: HOLD_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: right_issue
+    name: 配股
+    aliases: [配股]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_RIGHT_ISSUE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: share_repurchase
+    name: 股票回购
+    aliases: [回购, 股份回购]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPTA_WEB_GETHGLIST_NEW, page_size: page_size}, row: all, priority: 1}]
+
+  - id: executive_hold
+    name: 高管增减持
+    aliases: [高管增持, 高管减持]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_EXECUTIVE_HOLD_DETAILS, sort_columns: CHANGE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: goodwill
+    name: 商誉
+    aliases: [商誉]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_GOODWILL_MARKETSTATISTICS, sort_columns: REPORT_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: ipo_calendar
+    name: 新股日历
+    aliases: [新股日历, 申购日历]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_IPO_CALENDAR, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: shareholder_meeting
+    name: 股东大会
+    aliases: [股东大会]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_GENERALMEETING_DETAIL, sort_columns: NOTICE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: futures_lhb
+    name: 期货龙虎榜
+    aliases: [期货龙虎榜, 期货持仓]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_FUTU_DAILYPOSITION, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: related_trade
+    name: 关联交易
+    aliases: [关联交易]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_RELATED_TRADE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: major_contract
+    name: 重大合同
+    aliases: [重大合同, 合同]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPTA_WEB_ZDHT_LIST, sort_columns: DIM_RDATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: entrust_financing
+    name: 委托理财
+    aliases: [委托理财, 理财]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPTA_WEB_WTLCMX, page_size: page_size}, row: all, priority: 1}]
+
+  - id: market_valuation
+    name: 市场估值
+    aliases: [市场估值, 全市场估值]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_VALUEMARKET, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: shareholder_hold
+    name: 股东持股排行
+    aliases: [股东持股, 大股东]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPTA_WEB_GDGGLB, page_size: page_size}, row: all, priority: 1}]
+
+  - id: consistent_action
+    name: 一致行动人
+    aliases: [一致行动人]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPTA_WEB_YZXDRINDEX, sort_columns: NOTICEDATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: refinance
+    name: 转融通明细
+    aliases: [转融通, 融券]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_REFINANCE_TRAN_DEL, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: company_invest
+    name: 公司证券投资
+    aliases: [公司投资, 证券投资]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPTA_WEB_ZQTZMX, page_size: page_size}, row: all, priority: 1}]
+
+  - id: bgcz
+    name: 并购重组
+    aliases: [并购, 重组, 并购重组]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPTA_WEB_BGCZMX, page_size: page_size}, row: all, priority: 1}]
+
+  - id: ipo_review
+    name: IPO审核
+    aliases: [IPO审核, 上市审核]
+    group: event
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: dc.get, field: "", args: {report: RPT_IPO_INFOALLNEW, sort_columns: ACCEPT_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: suspend
+    name: 停复牌
+    aliases: [停牌, 复牌, 停复牌]
+    group: event
+    kind: table
+    args: {trade_date: {required: false}, page_size: {required: false}}
+    providers: [{endpoint: event.suspend, field: "", args: {trade_date: trade_date, page_size: page_size}, row: all, priority: 1}]
+
+  # ============================ P2-a ============================
+  # 口径取自 data.eastmoney.com 页面 JS：
+  #   gpzy/{default,detail}.js · executive_default.js · xsjj_default.js · zlsj_default.js
+  #   gdfx/{default,holdingdetail,holdingchange,holdinganalyse,holdingstatistics,holdingteamwork}.js
+  #   cjsj/cn/{qyjqzs,gyzjz,hjwh,hgjck,hbgyl,house}.js · cjsj/hyzs.js
+
+  # ---- 股权质押 ----
+  - id: pledge_market_overview
+    name: 股权质押市场概况
+    aliases: [股权质押概况, 质押市场概况, pledge_market_overview]
+    group: capital
+    kind: series
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_CSDC_STATISTICS, sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: pledge_ratio_list
+    name: 上市公司质押比例排行
+    aliases: [质押比例, 质押比例排行, pledge_ratio_list]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_CSDC_LIST_NEWEST, sort_columns: PLEDGE_RATIO, page_size: page_size}, row: all, priority: 1}
+
+  - id: pledge_holder_detail
+    name: 重要股东质押明细
+    aliases: [股东质押明细, 质押明细, pledge_holder_detail]
+    group: capital
+    kind: table
+    args: {code: {required: false}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_APP_ACCUMDETAILS, filter: '(SECURITY_CODE="{code}")', sort_columns: NOTICE_DATE, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPTA_APP_ACCUMDETAILS, sort_columns: NOTICE_DATE, page_size: page_size}, row: all, priority: 2}
+
+  - id: pledge_org_stat
+    name: 质押方构成统计
+    aliases: [质押方统计, 质押机构统计, pledge_org_stat]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      org_type: {values: [sec, bank], default: sec, maps: {sec: "证券Ⅱ", bank: "银行Ⅱ"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_GDZY_ZYJG_SUM, filter: '(PFORG_TYPE="{org_type_field}")', sort_columns: ORG_NUM, page_size: page_size}, row: all, priority: 1}
+
+  - id: pledge_industry_stat
+    name: 行业质押统计
+    aliases: [行业质押, 质押行业统计, pledge_industry_stat]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_CSDC_INDUSTRY_STATISTICS, sort_columns: AVERAGE_PLEDGE_RATIO, page_size: page_size}, row: all, priority: 1}
+
+  - id: pledge_ratio_dist
+    name: 质押比例分布
+    aliases: [质押比例分布, pledge_ratio_dist]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_APP_APLEDGERATIO, sort_columns: RATIO_PARAMETER, sort_types: 1, page_size: page_size}, row: all, priority: 1}
+
+  - id: pledge_warning_dist
+    name: 质押预警线分布
+    aliases: [质押预警线, 预警线分布, pledge_warning_dist]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_APP_WARNING, sort_columns: WARNING_CODE, sort_types: 1, page_size: page_size}, row: all, priority: 1}
+
+  - id: pledge_org_type_stat
+    name: 质押方类型统计
+    aliases: [质押方类型, pledge_org_type_stat]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPTA_APP_PLEDGEORGTYPE, columns: "PLEDGE_TYPE,PLEDGE_RATIO,PLEDGE_NUM", page_size: page_size}, row: all, priority: 1}
+
+  - id: pledge_stock_history
+    name: 个股质押比例序列
+    aliases: [个股质押比例, 质押比例历史, pledge_stock_history]
+    group: capital
+    kind: series
+    args: {code: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_CSDC_LIST, filter: '(SECURITY_CODE="{code}")', sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: pledge_stock_org_detail
+    name: 个股质押机构关联
+    aliases: [质押机构关联, 个股质押机构, pledge_stock_org_detail]
+    group: capital
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_STA_PLEORG_CORRE_ORG, filter: '(SECURITY_CODE="{code}")', sort_columns: LAST_PF_DATE, page_size: page_size}, row: all, priority: 1}
+
+  # ---- 高管持股 ----
+  - id: executive_hold_chart
+    name: 高管持股变动图
+    aliases: [高管增减持图, 高管持股变动月度, executive_hold_chart]
+    group: company
+    kind: series
+    args: {date_from: {required: false}, page_size: {required: false}}
+    calibrations:
+      market: {values: [all, sh, sz], default: all, maps: {all: "全部", sh: "沪市", sz: "深市"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_EXECUTIVESHARES_STATISTICS, filter: '(TRADE_MARKET="{market_field}")(MOUNTH>=''{date_from}'')', sort_columns: MOUNTH, sort_types: 1, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPT_EXECUTIVESHARES_STATISTICS, filter: '(TRADE_MARKET="{market_field}")', sort_columns: MOUNTH, sort_types: 1, page_size: page_size}, row: all, priority: 2}
+
+  - id: executive_hold_rank_in
+    name: 高管增持排行
+    aliases: [高管增持, 增持排行, executive_hold_rank_in]
+    group: company
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      period: {values: [1m, 1q, 6m, 1y, 2y], default: 1m, maps: {'1m': '1', '1q': '2', '6m': '3', '1y': '4', '2y': '5'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_EXECUTIVE_CHANGEHOLD_RANK, filter: '(CHANGE_TYPE="01")(DATE_TYPE="{period_field}")', sort_columns: AMOUNT, page_size: page_size}, row: all, priority: 1}
+
+  - id: executive_hold_rank_out
+    name: 高管减持排行
+    aliases: [高管减持, 减持排行, executive_hold_rank_out]
+    group: company
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      period: {values: [1m, 1q, 6m, 1y, 2y], default: 1m, maps: {'1m': '1', '1q': '2', '6m': '3', '1y': '4', '2y': '5'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_EXECUTIVE_CHANGEHOLD_RANK, filter: '(CHANGE_TYPE="02")(DATE_TYPE="{period_field}")', sort_columns: AMOUNT, sort_types: 1, page_size: page_size}, row: all, priority: 1}
+
+  - id: executive_hold_detail
+    name: 高管持股变动明细
+    aliases: [高管持股明细, 高管变动明细, executive_hold_detail]
+    group: company
+    kind: table
+    args: {code: {required: false}, person_name: {required: false}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_EXECUTIVE_HOLD_DETAILS, filter: '(SECURITY_CODE="{code}")(PERSON_NAME="{person_name}")', sort_columns: "CHANGE_DATE,SECURITY_CODE,PERSON_NAME", sort_types: "-1,1,1", page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPT_EXECUTIVE_HOLD_DETAILS, filter: '(SECURITY_CODE="{code}")', sort_columns: "CHANGE_DATE,SECURITY_CODE,PERSON_NAME", sort_types: "-1,1,1", page_size: page_size}, row: all, priority: 2}
+      - {endpoint: dc.get, field: "", args: {report: RPT_EXECUTIVE_HOLD_DETAILS, sort_columns: "CHANGE_DATE,SECURITY_CODE,PERSON_NAME", sort_types: "-1,1,1", page_size: page_size}, row: all, priority: 3}
+
+  # ---- 限售解禁 ----
+  - id: lift_market_day
+    name: 解禁市场一览（日）
+    aliases: [解禁日, 每日解禁, lift_market_day]
+    group: capital
+    kind: series
+    args: {page_size: {required: false}}
+    calibrations:
+      market: {values: [all, sha, sza, kcb, cyb, bja], default: all, maps: {all: "000300", sha: "000001", sza: "399001", kcb: "000688", cyb: "399006", bja: "999999"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_LIFTDAY_STA, filter: '(INDEX_CODE="{market_field}")', sort_columns: FREE_DATE, sort_types: 1, page_size: page_size}, row: all, priority: 1}
+
+  - id: lift_market_week
+    name: 解禁市场一览（周）
+    aliases: [解禁周, 每周解禁, lift_market_week]
+    group: capital
+    kind: series
+    args: {page_size: {required: false}}
+    calibrations:
+      market: {values: [all, sha, sza, kcb, cyb, bja], default: all, maps: {all: "000300", sha: "000001", sza: "399001", kcb: "000688", cyb: "399006", bja: "999999"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_CUSTOM_LIFT_STA_WEEK, filter: '(INDEX_CODE="{market_field}")', sort_columns: START_DATE, sort_types: 1, page_size: page_size}, row: all, priority: 1}
+
+  - id: lift_market_month
+    name: 解禁市场一览（月）
+    aliases: [解禁月, 每月解禁, lift_market_month]
+    group: capital
+    kind: series
+    args: {page_size: {required: false}}
+    calibrations:
+      market: {values: [all, sha, sza, kcb, cyb, bja], default: all, maps: {all: "000300", sha: "000001", sza: "399001", kcb: "000688", cyb: "399006", bja: "999999"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_CUSTOM_LIFT_STA_MONTH, filter: '(INDEX_CODE="{market_field}")', sort_columns: LIFT_MON, sort_types: 1, page_size: page_size}, row: all, priority: 1}
+
+  - id: lift_stage
+    name: 限售解禁明细
+    aliases: [解禁明细, 解禁个股, lift_stage]
+    group: capital
+    kind: table
+    args: {date_from: {required: true}, page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_LIFT_STAGE, columns: "SECURITY_CODE,SECURITY_NAME_ABBR,FREE_DATE,CURRENT_FREE_SHARES,ABLE_FREE_SHARES,LIFT_MARKET_CAP,FREE_RATIO,NEW,B20_ADJCHRATE,A20_ADJCHRATE,FREE_SHARES_TYPE,TOTAL_RATIO,NON_FREE_SHARES,BATCH_HOLDER_NUM", filter: "(FREE_DATE>='{date_from}')", sort_columns: "FREE_DATE,CURRENT_FREE_SHARES", sort_types: "1,-1", page_size: page_size}, row: all, priority: 1}
+
+  - id: lift_total_stat
+    name: 限售解禁统计
+    aliases: [解禁统计, 解禁规模, lift_total_stat]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      cycle: {values: [1m, 1q, 1y], default: 1m, maps: {'1m': '01', '1q': '02', '1y': '03'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_LIFT_STA, filter: '(STA="{cycle_field}")', page_size: page_size}, row: all, priority: 1}
+
+  # ---- 主力数据（机构持仓股） ----
+  - id: zlsj_report_dates
+    name: 主力数据报告期
+    aliases: [主力报告期, 机构持仓日期, zlsj_report_dates]
+    group: capital
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MAIN_REPORTDATE, sort_columns: REPORT_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: zlsj_hold_rank
+    name: 机构持仓股排行
+    aliases: [主力持仓, 机构持仓股, 基金重仓股, zlsj_hold_rank]
+    group: capital
+    kind: table
+    args: {date: {required: false}, page_size: {required: false}, page_num: {required: false}}
+    calibrations:
+      org_type: {values: [fund, qfii, ssf, broker, insurance, trust], default: fund, maps: {fund: "1", qfii: "2", ssf: "3", broker: "4", insurance: "5", trust: "6"}}
+    providers:
+      - {endpoint: zlsj.list, field: "", args: {date: date, org_type: "{org_type_field}", page_size: page_size, page_num: page_num}, row: all, priority: 1}
+
+  # ---- 股东分析 ----
+  - id: gdfx_report_dates
+    name: 股东分析报告期
+    aliases: [股东报告期, 十大股东报告期, gdfx_report_dates]
+    group: company
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      scope: {values: [free, all], default: free, maps: {free: "RPT_FREEHOLDERS_HD_REPORTDATE", all: "RPT_HOLDERS_HD_REPORTDATE"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: "{scope_field}", filter: "(END_DATE>='2015-03-31')", sort_columns: END_DATE, page_size: page_size}, row: all, priority: 1}
+
+  - id: gdfx_hold_detail
+    name: 十大股东持股明细
+    aliases: [十大流通股东, 十大股东明细, gdfx_hold_detail]
+    group: company
+    kind: table
+    args: {end_date: {required: false}, page_size: {required: false}}
+    calibrations:
+      scope: {values: [free, all], default: free, maps: {free: "RPT_F10_EH_FREEHOLDERS", all: "RPT_DMSK_HOLDERS"}}
+      listing_state: {values: [free, all], default: free, maps: {free: '(LISTING_STATE<>"10")', all: '(LISTING_STATE<>"10")(LISTING_STATE<>"9")'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: "{scope_field}", filter: "{listing_state_field}(END_DATE='{end_date}')", page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: "{scope_field}", filter: "{listing_state_field}", page_size: page_size}, row: all, priority: 2}
+
+  - id: gdfx_hold_change
+    name: 股东持股变动统计
+    aliases: [股东持股变动, 股东数变动, gdfx_hold_change]
+    group: company
+    kind: table
+    args: {end_date: {required: false}, page_size: {required: false}}
+    calibrations:
+      scope: {values: [free, all], default: free, maps: {free: "RPT_FREEHOLDERS_BASIC_INFO", all: "RPT_HOLDERS_BASIC_INFO"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: "{scope_field}", filter: "(END_DATE='{end_date}')", sort_columns: "HOLDER_NUM,HOLDER_NEW", sort_types: "-1,-1", page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: "{scope_field}", filter: "(END_DATE>='2015-03-31')", sort_columns: "HOLDER_NUM,HOLDER_NEW", sort_types: "-1,-1", page_size: page_size}, row: all, priority: 2}
+
+  - id: gdfx_hold_change_latest
+    name: 股东持股变动最新
+    aliases: [最新股东变动, 股东变动最新, gdfx_hold_change_latest]
+    group: company
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      scope: {values: [free, all], default: free, maps: {free: "RPT_FREEHOLDERS_BASIC_INFONEW", all: "RPT_HOLDERS_BASIC_INFONEW"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: "{scope_field}", sort_columns: "HOLDER_NUM,HOLDER_NEW", sort_types: "-1,-1", page_size: page_size}, row: all, priority: 1}
+
+  - id: gdfx_hold_analyse
+    name: 股东持股分析
+    aliases: [股东持股分析, 持有个股分析, gdfx_hold_analyse]
+    group: company
+    kind: table
+    args: {end_date: {required: false}, page_size: {required: false}}
+    calibrations:
+      scope: {values: [free, all], default: free, maps: {free: "RPT_CUSTOM_F10_EH_FREEHOLDERS_JOIN_FREEHOLDER_SHAREANALYSIS", all: "RPT_CUSTOM_DMSK_HOLDERS_JOIN_HOLDER_SHAREANALYSIS"}}
+      listing_state: {values: [free, all], default: free, maps: {free: '(LISTING_STATE<>"10")', all: '(LISTING_STATE<>"9")'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: "{scope_field}", filter: "{listing_state_field}(END_DATE='{end_date}')", sort_columns: END_DATE, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: "{scope_field}", filter: "(END_DATE>='2015-03-31')", sort_columns: END_DATE, page_size: page_size}, row: all, priority: 2}
+
+  - id: gdfx_hold_statistics
+    name: 股东协同持股统计
+    aliases: [股东协同统计, 协同持股, gdfx_hold_statistics]
+    group: company
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      scope: {values: [free, all], default: free, maps: {free: "RPT_COOPFREEHOLDERS_ANALYSIS", all: "RPT_COOPHOLDERS_ANALYSIS"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: "{scope_field}", sort_columns: STATISTICS_TIMES, page_size: page_size}, row: all, priority: 1}
+
+  - id: gdfx_hold_teamwork
+    name: 股东协同持股明细
+    aliases: [股东协同, 协同持股明细, gdfx_hold_teamwork]
+    group: company
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      scope: {values: [free, all], default: free, maps: {free: "RPT_COOPFREEHOLDER", all: "RPT_TENHOLDERS_COOPHOLDERS"}}
+      holder_kind: {values: [all, person, fund, qfii, ssf, broker, trust], default: all, maps: {all: "", person: "个人", fund: "基金", qfii: "QFII", ssf: "社保", broker: "券商", trust: "信托"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: "{scope_field}", filter: '(HOLDER_TYPE="{holder_kind_field}")', sort_columns: COOPERAT_NUM, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: "{scope_field}", sort_columns: COOPERAT_NUM, page_size: page_size}, row: all, priority: 2}
+
+  - id: gdfx_hot_holder
+    name: 热门股东（协同次数变动）
+    aliases: [热门股东, 股东协同变动, gdfx_hot_holder]
+    group: company
+    kind: table
+    args: {page_size: {required: false}}
+    calibrations:
+      change: {values: [in, out, new], default: in, maps: {in: "001", out: "002", new: "003"}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_COOPFREEHOLDERS_ANALYSISNEW, filter: '(HOLDNUM_CHANGE_TYPE="{change_field}")', sort_columns: "STATISTICS_TIMES,COOPERATION_HOLDER_MARK", sort_types: "-1,-1", page_size: page_size}, row: all, priority: 1}
+
+  # ---- 宏观（cjsj 未覆盖页 + 行业指标库） ----
+  - id: macro_business_climate
+    name: 企业景气及企业家信心指数
+    aliases: [企业景气指数, 企业家信心指数, macro_business_climate]
+    group: macro
+    kind: series
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: business_climate, page_size: page_size}, row: all, priority: 1}]
+
+  - id: macro_industrial_va
+    name: 工业增加值增长
+    aliases: [工业增加值, 工业增长, macro_industrial_va]
+    group: macro
+    kind: series
+    unit: "%"
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: industrial_va, page_size: page_size}, row: all, priority: 1}]
+
+  - id: macro_trade
+    name: 海关进出口
+    aliases: [进出口, 海关进出口, 外贸, macro_trade]
+    group: macro
+    kind: series
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: trade, page_size: page_size}, row: all, priority: 1}]
+
+  - id: macro_gold_reserve
+    name: 黄金储备
+    aliases: [黄金储备, 央行黄金, macro_gold_reserve]
+    group: macro
+    kind: series
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: gold_reserve, page_size: page_size}, row: all, priority: 1}]
+
+  - id: macro_house_index
+    name: 国房景气指数
+    aliases: [国房景气指数, 房价指数, macro_house_index]
+    group: macro
+    kind: series
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: house_index, page_size: page_size}, row: all, priority: 1}]
+
+  - id: macro_money_supply
+    name: 货币供应量（M0/M1/M2）
+    aliases: [货币供应量, 货币供应, M0, M1, macro_money_supply]
+    group: macro
+    kind: series
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.domestic, field: "", args: {indicator: money_supply, page_size: page_size}, row: all, priority: 1}]
+
+  - id: macro_indicator_list
+    name: 宏观/行业指标库
+    aliases: [行业指数, 宏观指标库, 行业指标, macro_indicator_list]
+    group: macro
+    kind: table
+    args: {page_size: {required: false}}
+    providers: [{endpoint: macro.indicator_list, field: "", args: {page_size: page_size}, row: all, priority: 1}]
+
+  - id: macro_indicator_history
+    name: 宏观/行业指标历史序列
+    aliases: [指标历史, 行业指标历史, macro_indicator_history]
+    group: macro
+    kind: series
+    args: {indicator_id: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: macro.indicator_history, field: "", args: {indicator_id: indicator_id, page_size: page_size}, row: all, priority: 1}]
+
+  # =====================================================================
+  # P2-b F10 全二级标签页（公司资料）
+  # =====================================================================
+  - id: f10_issue_info
+    name: F10发行相关
+    aliases: [发行相关, 发行信息, f10_issue_info]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: fxxg, args: {code: code, module: f10_survey}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_PCF10_ORG_ISSUEINFO, filter: "(SECUCODE=\"{secucode}\")", page_size: 5}, row: all, priority: 2}]
+
+  - id: f10_dev_history
+    name: F10发展历程
+    aliases: [发展历程, 变更历程, f10_dev_history]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_ORG_COURSECHANGE, filter: "(SECUCODE=\"{secucode}\")", sort_columns: CHANGE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: f10_recapitalize
+    name: F10参控股/并购重组
+    aliases: [参控股, 并购重组, 重大重组, f10_recapitalize]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_ORG_RECAPITALIZE, filter: "(SECUCODE=\"{secucode}\")", sort_columns: NOTICE_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: f10_public_org_hold
+    name: F10参控股企业
+    aliases: [参控股企业, 参股企业, f10_public_org_hold]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_PUBLIC_OP_HOLDINGORG, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: f10_valuation_percentile
+    name: F10估值分位
+    aliases: [估值分位, 估值百分位, f10_valuation_percentile]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_STOCKVALUATIONTANTILE, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: concept_keypoints
+    name: 核心题材要点
+    aliases: [核心题材, 题材要点, concept_keypoints]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: hxtc, args: {code: code, module: f10_concept}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_F10_CORETHEME_CONTENT, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_controlling_holder
+    name: F10控股股东
+    aliases: [控股股东, 实际控制人, f10_controlling_holder]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: sjkzr, args: {code: code, module: f10_holding}, row: all, priority: 1}]
+
+  - id: f10_holder_relation
+    name: F10股东关联关系
+    aliases: [股东关联关系, 关联关系, f10_holder_relation]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_EH_RELATION, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: f10_limited_share
+    name: F10有限售流通股
+    aliases: [有限售流通股, 限售股, f10_limited_share]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: ltgf, args: {code: code, module: f10_holding}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_F10_FREE_TOTALHOLDNUM, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_fund_hold
+    name: F10基金持股
+    aliases: [基金持股, f10基金持仓, f10_fund_hold]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: f10.module, field: jjcg, args: {code: code, module: f10_holding}, row: all, priority: 1}]
+
+  - id: f10_org_holding
+    name: F10机构持仓明细
+    aliases: [机构持仓明细, 主力持仓, f10_org_holding]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_MAIN_ORGHOLDDETAILS, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: f10_business_scope
+    name: F10主营范围
+    aliases: [主营范围, 经营范围, f10_business_scope]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: zyfw, args: {code: code, module: f10_business}, row: all, priority: 1}]
+
+  - id: f10_main_composition
+    name: F10主营构成
+    aliases: [主营构成, 收入构成, f10_main_composition]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: f10.module, field: zygcfx, args: {code: code, module: f10_business}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_F10_FN_SEGMENTSV, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 2}]
+
+  - id: f10_business_review
+    name: F10经营评述
+    aliases: [经营评述, 业务回顾, f10_business_review]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: jyps, args: {code: code, module: f10_business}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_F10_OP_BUSINESSANALYSIS, filter: "(SECUCODE=\"{secucode}\")", page_size: 10}, row: all, priority: 2}]
+
+  - id: f10_customer_supplier
+    name: F10客户与供应商
+    aliases: [客户供应商, 主要客户, f10_customer_supplier]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_BUSINESS_CUSTSUPP, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: f10_competitiveness
+    name: F10核心竞争力
+    aliases: [核心竞争力, 产品竞争力, f10_competitiveness]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_COMPETITIVENESS_PRODUCTTAG_NEW, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: f10_staff_structure
+    name: F10员工结构
+    aliases: [员工结构, 人员构成, f10_staff_structure]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_STAFFCOMPETE_STRUCTURE, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_HSF9_BASIC_STAFFCOMPOSITION, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_stock_news
+    name: F10个股资讯
+    aliases: [个股资讯, 相关资讯, f10_stock_news]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: gszx, args: {code: code, module: f10_news}, row: all, priority: 1}]
+
+  - id: f10_stock_notice
+    name: F10个股公告
+    aliases: [个股公告, 公司公告, f10_stock_notice]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: gsgg, args: {code: code, module: f10_news}, row: all, priority: 1}]
+
+  - id: f10_pledge_detail
+    name: F10股权质押明细
+    aliases: [股权质押明细, 质押明细, f10_pledge_detail]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: gqzy, args: {code: code, module: f10_event}, row: all, priority: 1}]
+
+  - id: f10_guarantee
+    name: F10对外担保
+    aliases: [对外担保, 担保, f10_guarantee]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: f10.module, field: dwdb, args: {code: code, module: f10_event}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_F10_ORGRES_GUARANTEE, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 2}]
+
+  - id: f10_litigation
+    name: F10诉讼仲裁
+    aliases: [诉讼仲裁, 诉讼, f10_litigation]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: f10.module, field: sszc, args: {code: code, module: f10_event}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_LITIGATION_ARBITRATION_BSINFO, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 2}]
+
+  - id: f10_violation
+    name: F10违规处理
+    aliases: [违规处理, 违规处罚, f10_violation]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: wgcl, args: {code: code, module: f10_event}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_HSF9_OP_VIOLATION, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_executive_hold_stock
+    name: F10高管持股变动
+    aliases: [高管持股变动, 董监高持股变动, f10_executive_hold_stock]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: ggcgbd, args: {code: code, module: f10_event}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_F10_TRADE_EXCHANGEHOLD, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_management_bio
+    name: F10管理层简介
+    aliases: [管理层简介, 高管简历, f10_management_bio]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_ORGINFO_MANAINTRO, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: f10_executive_salary
+    name: F10高管薪酬
+    aliases: [高管薪酬, 薪酬排行, f10_executive_salary]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_ORGINFO_SALARY, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: f10_lhb_stock
+    name: F10龙虎榜单
+    aliases: [个股龙虎榜, f10龙虎榜, f10_lhb_stock]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: lhbd, args: {code: code, module: f10_event}, row: all, priority: 1}]
+
+  - id: f10_block_trade_detail
+    name: F10大宗交易
+    aliases: [个股大宗交易, f10大宗交易, f10_block_trade_detail]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: dzjy, args: {code: code, module: f10_event}, row: all, priority: 1}]
+
+  - id: f10_margin_detail
+    name: F10融资融券明细
+    aliases: [个股融资融券, f10两融, f10_margin_detail]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: rzrq, args: {code: code, module: f10_event}, row: all, priority: 1}]
+
+  - id: f10_dupont_compare
+    name: F10杜邦分析比较
+    aliases: [杜邦分析比较, 杜邦比较, f10_dupont_compare]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: dbfxbj, args: {code: code, module: f10_industry}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_PCF10_INDUSTRY_DBFX, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_market_performance
+    name: F10市场表现
+    aliases: [市场表现, 涨跌幅对比, f10_market_performance]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: scbx, args: {code: code, module: f10_industry}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_PCF10_MARKETPER, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_company_scale
+    name: F10公司规模
+    aliases: [公司规模, 规模对比, f10_company_scale]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: gsgm, args: {code: code, module: f10_industry}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_PCF10_INDUSTRY_MARKET, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_industry_compared
+    name: F10行业综合对比
+    aliases: [行业综合对比, 同行比较, f10_industry_compared]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_INDUSTRY_COMPARED, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: f10_valuation_compare
+    name: F10估值比较
+    aliases: [估值比较, 同行估值, f10_valuation_compare]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCF10_INDUSTRY_CVALUE, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: f10_growth_compare
+    name: F10成长性比较
+    aliases: [成长性比较, 成长性对比, f10_growth_compare]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCF10_INDUSTRY_GROWTH, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: f10_related_concept
+    name: F10关联概念
+    aliases: [关联概念, 同概念个股, f10_related_concept]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_RELATE_GN, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: f10_rating_stat
+    name: F10评级统计
+    aliases: [评级统计, 投资评级统计, f10_rating_stat]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: pjtj, args: {code: code, module: f10_forecast}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_HSF10_RES_ORGRATING, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_forecast_detail
+    name: F10机构预测
+    aliases: [机构预测, 机构盈利预测, f10_forecast_detail]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: jgyc, args: {code: code, module: f10_forecast}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_HSF10_RES_ORGPREDICT, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_forecast_stat
+    name: F10盈利预测统计
+    aliases: [盈利预测统计, 预测统计, f10_forecast_stat]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: yctj_list, args: {code: code, module: f10_forecast}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_HSF10_RESPREDICT_STATISTICS, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_forecast_org_detail
+    name: F10预测明细
+    aliases: [预测明细, 盈利预测明细, f10_forecast_org_detail]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: ycmx, args: {code: code, module: f10_forecast}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_HSF10_RES_PREDICTDETAIL, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_rating_summary
+    name: F10研报摘要
+    aliases: [研报摘要, 最新研报, f10_rating_summary]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: ybzy, args: {code: code, module: f10_required}, row: all, priority: 1}]
+
+  - id: f10_core_indicators
+    name: F10操盘必读核心指标
+    aliases: [操盘必读, 核心指标, f10_core_indicators]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: zxzb, args: {code: code, module: f10_required}, row: all, priority: 1}]
+
+  - id: f10_extra_indicators
+    name: F10操盘必读补充指标
+    aliases: [补充指标, 操盘必读补充, f10_extra_indicators]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: zxzbOther, args: {code: code, module: f10_required}, row: all, priority: 1}]
+
+  - id: f10_tszb
+    name: F10特色指标
+    aliases: [特色指标, tszb, f10_tszb]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: tszb, args: {code: code, module: f10_required}, row: all, priority: 1}]
+
+  - id: f10_main_indicators
+    name: F10主要指标明细
+    aliases: [主要指标明细, zyzb, f10_main_indicators]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: zyzb, args: {code: code, module: f10_required}, row: all, priority: 1}]
+
+  - id: f10_qtr_main
+    name: F10单季主要指标
+    aliases: [单季主要指标, 季度指标, f10_qtr_main]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_QTR_MAINFINADATA, filter: "(SECUCODE=\"{secucode}\")", sort_columns: REPORT_DATE, page_size: page_size}, row: all, priority: 1}]
+
+  - id: f10_dividend_plan
+    name: F10分红方案
+    aliases: [分红方案, 分红派息, f10_dividend_plan]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: fhyx, args: {code: code, module: f10_bonus}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_F10_DIVIDEND_MAIN, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  - id: f10_dividend_histogram
+    name: F10分红融资直方
+    aliases: [分红融资直方, 分红统计, f10_dividend_histogram]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_F10_DIVIDEND_HISTOGRAM, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: f10_seo_detail
+    name: F10增发明细
+    aliases: [增发明细, 增发, f10_seo_detail]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: f10.module, field: zfmx, args: {code: code, module: f10_bonus}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_F10_DIVIDEND_SEO, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 2}]
+
+  - id: f10_right_issue_detail
+    name: F10配股明细
+    aliases: [配股明细, 配股, f10_right_issue_detail]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: f10.module, field: pgmx, args: {code: code, module: f10_bonus}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_F10_DIVIDEND_ALLOTMENT, filter: "(SECUCODE=\"{secucode}\")", page_size: page_size}, row: all, priority: 2}]
+
+  - id: f10_project_progress
+    name: F10募投项目进度
+    aliases: [项目进度, 募投项目, f10_project_progress]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: f10.module, field: xmjd, args: {code: code, module: f10_capital_op}, row: all, priority: 1},
+                {endpoint: dc.securities, field: "", args: {report: RPT_F10_CAPITAL_ITEM, filter: "(SECUCODE=\"{secucode}\")", page_size: 20}, row: all, priority: 2}]
+
+  # =====================================================================
+  # P2-b 港股 F10（PC_HKF10）
+  # =====================================================================
+  - id: hk_profile
+    name: 港股公司资料
+    aliases: [港股公司资料, 港股概况, hk_profile]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_INFO_ORGPROFILE, filter: "(SECURITY_CODE=\"{code}\")", page_size: 5}, row: all, priority: 1}]
+
+  - id: hk_security_info
+    name: 港股证券资料
+    aliases: [港股证券资料, 港股发行, hk_security_info]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_INFO_SECURITYINFO, filter: "(SECURITY_CODE=\"{code}\")", page_size: 5}, row: all, priority: 1}]
+
+  - id: hk_equity
+    name: 港股股本结构
+    aliases: [港股股本结构, hk_equity]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_INFO_EQUITY, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_equity_str
+    name: 港股股本构成
+    aliases: [港股股本构成, hk_equity_str]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_INFO_EQUITYSTR, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_repo
+    name: 港股股票回购
+    aliases: [港股回购, hk_repo]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_INFO_REPO, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_business
+    name: 港股业务回顾
+    aliases: [港股业务回顾, 港股业务展望, hk_business]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_ORG_BUSSINESS, filter: "(SECURITY_CODE=\"{code}\")", page_size: 10}, row: all, priority: 1}]
+
+  - id: hk_dividend
+    name: 港股分红派息
+    aliases: [港股分红派息, 港股分红, hk_dividend]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_MAIN_DIVBASIC, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_equity_change
+    name: 港股历史股权变动
+    aliases: [港股历史股权变动, 港股股权变动, hk_equity_change]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_SH_EQUITYCHG, filter: "(SECUCODE=\"{code}.HK\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_split
+    name: 港股拆股合并
+    aliases: [港股拆股合并, 港股拆股, hk_split]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_SH_SPLIT, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_holder_equity
+    name: 港股董事及股东权益
+    aliases: [港股董事及股东权益, 港股股东权益, hk_holder_equity]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_EQUITYCHG_HOLDER, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_management
+    name: 港股董事会成员
+    aliases: [港股董事会, 港股高管, hk_management]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKPCF10_BASIC_EXECUTIVEINFO, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_rating
+    name: 港股投资评级
+    aliases: [港股投资评级, 港股评级, hk_rating]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKPCF10_INFO_ORGRATING, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_issue_info
+    name: 港股首发资料
+    aliases: [港股首发资料, 港股发行资料, hk_issue_info]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HSPE_ISSUEINFO, filter: "(SECUCODE=\"{code}.HK\")", page_size: 5}, row: all, priority: 1}]
+
+  - id: hk_issue_date
+    name: 港股发行关键日期
+    aliases: [港股发行关键日期, 港股招股日期, hk_issue_date]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCF10_ISSUEINFODATE, filter: "(SECUCODE=\"{code}.HK\")", page_size: 5}, row: all, priority: 1}]
+
+  - id: hk_market_perf
+    name: 港股市场表现对比
+    aliases: [港股市场表现对比, 港股市场表现, hk_market_perf]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCF10_HKMARKETPER, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_industry_value
+    name: 港股行业估值对比
+    aliases: [港股行业估值对比, 港股估值对比, hk_industry_value]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCF10_INDUSTRY_HKCVALUE, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_industry_growth
+    name: 港股行业成长性对比
+    aliases: [港股行业成长性对比, 港股成长性对比, hk_industry_growth]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCF10_INDUSTRY_HKGROWTH, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_industry_scale
+    name: 港股行业规模对比
+    aliases: [港股行业规模对比, 港股规模对比, hk_industry_scale]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCF10_INDUSTRY_SCALE, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_fn_indicator
+    name: 港股财务主要指标
+    aliases: [港股财务主要指标, 港股主要指标, hk_fn_indicator]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_FN_MAININDICATOR, filter: "(SECURITY_CODE=\"{code}\")", sort_columns: REPORT_DATE, page_size: 20}, row: all, priority: 1}]
+
+  - id: hk_fn_balance
+    name: 港股资产负债表
+    aliases: [港股资产负债表, 港股资产负债表, hk_fn_balance]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_FN_BALANCE_PC, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: hk_fn_income
+    name: 港股利润表
+    aliases: [港股利润表, hk_fn_income]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_FN_INCOME_PC, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: hk_fn_cashflow
+    name: 港股现金流量表
+    aliases: [港股现金流量表, hk_fn_cashflow]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_HKF10_FN_CASHFLOW_PC, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: hk_fn_max
+    name: 港股最新财务指标
+    aliases: [港股最新财务指标, hk_fn_max]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_CUSTOM_HKF10_FN_MAININDICATORMAX, filter: "(SECURITY_CODE=\"{code}\")", page_size: 5}, row: all, priority: 1}]
+
+  - id: hk_detail
+    name: 港股大事提醒
+    aliases: [港股大事提醒, hk_detail]
+    group: f10
+    kind: table
+    args: {secucode: {required: true}}
+    providers: [{endpoint: f10.detail, field: "", args: {secucode: secucode, kind: index}, row: all, priority: 1}]
+
+  # =====================================================================
+  # P2-b 美股 F10（PC_USF10）
+  # =====================================================================
+  - id: us_profile
+    name: 美股公司概况
+    aliases: [美股公司概况, 美股概况, us_profile]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_INFO_ORGPROFILE, filter: "(SECURITY_CODE=\"{code}\")", page_size: 5}, row: all, priority: 1}]
+
+  - id: us_security_info
+    name: 美股证券资料
+    aliases: [美股证券资料, us_security_info]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_INFO_SECURITYINFO, filter: "(SECURITY_CODE=\"{code}\")", page_size: 5}, row: all, priority: 1}]
+
+  - id: us_main_indicator
+    name: 美股主要指标
+    aliases: [美股主要指标, 美股核心指标, us_main_indicator]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_DATA_MAININDICATOR, filter: "(SECURITY_CODE=\"{code}\")", page_size: 5}, row: all, priority: 1}]
+
+  - id: us_fn_balance
+    name: 美股资产负债表
+    aliases: [美股资产负债表, us_fn_balance]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_FN_BALANCE, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_fn_income
+    name: 美股利润表
+    aliases: [美股利润表, us_fn_income]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_FN_INCOME, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_fn_cashflow
+    name: 美股现金流量表
+    aliases: [美股现金流量表, us_fn_cashflow]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USSK_FN_CASHFLOW, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_fn_indicator
+    name: 美股财务综合指标
+    aliases: [美股财务综合指标, us_fn_indicator]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_FN_GMAININDICATOR, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_product_structure
+    name: 美股主营构成
+    aliases: [美股主营构成, 美股产品结构, us_product_structure]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_INFO_PRODUCTSTRUCTURE, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_region_structure
+    name: 美股地区构成
+    aliases: [美股地区构成, 美股地区结构, us_region_structure]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_INFO_REGIONSTRUCTURE, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_equity_change
+    name: 美股股本变动
+    aliases: [美股股本变动, us_equity_change]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_US10_INFO_EQUITY, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_split
+    name: 美股拆股并股
+    aliases: [美股拆股并股, 美股拆股, us_split]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_SH_SPLIT, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_holders
+    name: 美股董事及股东权益
+    aliases: [美股股东权益, 美股持股人, us_holders]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCUSF10_STOCK_HOLDERS, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_org_hold
+    name: 美股机构持股汇总
+    aliases: [美股机构持股, 美股机构持股汇总, us_org_hold]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCUSF10_STOCK_ORGHOLD, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_org_hold_detail
+    name: 美股机构持股明细
+    aliases: [美股机构持股明细, 美股机构明细, us_org_hold_detail]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_SH_ORGHOLDDETAILS, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_fund_hold
+    name: 美股基金持股
+    aliases: [美股基金持股, us_fund_hold]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCUSF10_STOCK_FOUND, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_insider_trade
+    name: 美股高管交易
+    aliases: [美股高管交易, 美股内部人交易, us_insider_trade]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCUSF10_STOCK_LEADER, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_holders_date
+    name: 美股持股报告期
+    aliases: [美股持股报告期, us_holders_date]
+    group: f10
+    kind: table
+    args: {code: {required: true}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_PCUSF10_STOCK_DATEHOLDERS, filter: "(SECURITY_CODE=\"{code}\")", page_size: 20}, row: all, priority: 1}]
+
+  - id: us_dividend
+    name: 美股分红派息
+    aliases: [美股分红派息, 美股分红, us_dividend]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_INFO_DIVIDEND, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_rating
+    name: 美股机构评级
+    aliases: [美股机构评级, 美股评级, us_rating]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_INFO_ORGRATING, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_short_selling
+    name: 美股卖空明细
+    aliases: [美股卖空明细, 美股做空, us_short_selling]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_ANALYSIS_SHORT, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_management
+    name: 美股公司管理层
+    aliases: [美股管理层, 美股高管, us_management]
+    group: f10
+    kind: table
+    args: {code: {required: true}, page_size: {required: false}}
+    providers: [{endpoint: dc.securities, field: "", args: {report: RPT_USF10_BASIC_EXECUTIVEINFO, filter: "(SECURITY_CODE=\"{code}\")", page_size: page_size}, row: all, priority: 1}]
+
+  - id: us_detail
+    name: 美股大事提醒
+    aliases: [美股大事提醒, us_detail]
+    group: f10
+    kind: table
+    args: {secucode: {required: true}}
+    providers: [{endpoint: f10.detail, field: "", args: {secucode: secucode, kind: index}, row: all, priority: 1}]
+  # =====================================================================
+  # P2-c · 行情中心长尾（市场清单 130 条，fs 逐条取自站点 hashtable 并实测非空）
+  # =====================================================================
+  - id: stock_list
+    name: 沪深京A股
+    aliases: [沪深京A股, A股列表, 沪深京A股列表, stock_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_sh
+    name: 上证A股
+    aliases: [上证A股, stock_list_sh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_sh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_sh_zcz
+    name: 上证A股(注册制)
+    aliases: [上证A股(注册制), stock_list_sh_zcz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_sh_zcz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_sh_hzz
+    name: 上证A股(核准制)
+    aliases: [上证A股(核准制), stock_list_sh_hzz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_sh_hzz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_sz
+    name: 深证A股
+    aliases: [深证A股, stock_list_sz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_sz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_sz_zcz
+    name: 深证A股(注册制)
+    aliases: [深证A股(注册制), stock_list_sz_zcz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_sz_zcz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_sz_hzz
+    name: 深证A股(核准制)
+    aliases: [深证A股(核准制), stock_list_sz_hzz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_sz_hzz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_bj
+    name: 北交所股票
+    aliases: [北交所股票, stock_list_bj]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_bj, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_gem
+    name: 创业板
+    aliases: [创业板, 创业板列表, stock_list_gem]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_gem, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_gem_zcz
+    name: 创业板(注册制)
+    aliases: [创业板(注册制), stock_list_gem_zcz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_gem_zcz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_gem_hzz
+    name: 创业板(核准制)
+    aliases: [创业板(核准制), stock_list_gem_hzz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_gem_hzz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_kcb
+    name: 科创板
+    aliases: [科创板, 科创板列表, stock_list_kcb]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_kcb, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: stock_list_b
+    name: B股
+    aliases: [B股, B股列表, stock_list_b]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: stock_list_b, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: new_stock_list
+    name: 新股
+    aliases: [新股, 新股列表, 次新股, new_stock_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: new_stock_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: st_stock_list
+    name: 风险警示板
+    aliases: [风险警示板, ST股, 风险警示, st_stock_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: st_stock_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: st_stock_list_sh
+    name: 风险警示板(沪)
+    aliases: [风险警示板(沪), st_stock_list_sh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: st_stock_list_sh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: st_stock_list_sz
+    name: 风险警示板(深)
+    aliases: [风险警示板(深), st_stock_list_sz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: st_stock_list_sz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: st_stock_list_bj
+    name: 风险警示板(北)
+    aliases: [风险警示板(北), st_stock_list_bj]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: st_stock_list_bj, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: st_stock_list_kcb
+    name: 风险警示板(科创)
+    aliases: [风险警示板(科创), st_stock_list_kcb]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: st_stock_list_kcb, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: st_stock_list_gem
+    name: 风险警示板(创业)
+    aliases: [风险警示板(创业), st_stock_list_gem]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: st_stock_list_gem, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: delisted_stock_list
+    name: 两网及退市
+    aliases: [两网及退市, 退市股票, 两网退市, delisted_stock_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: delisted_stock_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: neeq_stock_list
+    name: 新三板
+    aliases: [新三板, 股转系统, 三板, neeq_stock_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: neeq_stock_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: neeq_innovate
+    name: 新三板创新层
+    aliases: [新三板创新层, neeq_innovate]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: neeq_innovate, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: neeq_basic
+    name: 新三板基础层
+    aliases: [新三板基础层, neeq_basic]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: neeq_basic, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: neeq_marketmaking
+    name: 新三板做市
+    aliases: [新三板做市, neeq_marketmaking]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: neeq_marketmaking, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: neeq_bidding
+    name: 新三板集合竞价
+    aliases: [新三板集合竞价, neeq_bidding]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: neeq_bidding, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hsgt_stock_list_sh
+    name: 沪股通标的
+    aliases: [沪股通标的, hsgt_stock_list_sh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hsgt_stock_list_sh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hsgt_stock_list_sz
+    name: 深股通标的
+    aliases: [深股通标的, hsgt_stock_list_sz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hsgt_stock_list_sz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: ah_comparison
+    name: AH股比价
+    aliases: [AH股比价, AH比价, A+H, ah_comparison]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: ah_comparison, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: ab_comparison
+    name: AB股比价
+    aliases: [AB股比价, AB比价, ab_comparison]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: ab_comparison, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: ab_comparison_sh
+    name: AB股比价(沪)
+    aliases: [AB股比价(沪), ab_comparison_sh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: ab_comparison_sh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: ab_comparison_sz
+    name: AB股比价(深)
+    aliases: [AB股比价(深), ab_comparison_sz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: ab_comparison_sz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: index_list_sh
+    name: 上证系列指数
+    aliases: [上证系列指数, 上证指数列表, index_list_sh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: index_list_sh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: index_list_sz
+    name: 深证系列指数
+    aliases: [深证系列指数, 深证指数列表, index_list_sz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: index_list_sz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: index_zzzs
+    name: 中证系列指数
+    aliases: [中证系列指数, 中证指数, index_zzzs]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: index_zzzs, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: index_components
+    name: 指数成分股
+    aliases: [指数成分股, 成分股, 指数成分, index_components]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: index_components, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: region_board
+    name: 地域板块
+    aliases: [地域板块, 地域板块列表, 地区板块, region_board]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: region_board, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: industry_board_1
+    name: 行业板块(一级)
+    aliases: [行业板块(一级), 东财一级行业, industry_board_1]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: industry_board_1, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: industry_board_2
+    name: 行业板块(二级)
+    aliases: [行业板块(二级), 东财二级行业, industry_board_2]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: industry_board_2, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: industry_board_3
+    name: 行业板块(三级)
+    aliases: [行业板块(三级), 东财三级行业, industry_board_3]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: industry_board_3, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hsgt_etf_sh
+    name: 沪股通ETF
+    aliases: [沪股通ETF, 沪股通ETF列表, hsgt_etf_sh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hsgt_etf_sh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hsgt_etf_sz
+    name: 深股通ETF
+    aliases: [深股通ETF, hsgt_etf_sz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hsgt_etf_sz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_hsgt_etf_sh
+    name: 港股通(沪)ETF
+    aliases: [港股通(沪)ETF, hk_hsgt_etf_sh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_hsgt_etf_sh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_hsgt_etf_sz
+    name: 港股通(深)ETF
+    aliases: [港股通(深)ETF, hk_hsgt_etf_sz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_hsgt_etf_sz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_hsgt_etf_all
+    name: 港股通ETF(沪深合计)
+    aliases: [港股通ETF(沪深合计), hk_hsgt_etf_all]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_hsgt_etf_all, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_hsgt_list_sh
+    name: 港股通(沪)标的
+    aliases: [港股通(沪)标的, 港股通沪标的, hk_hsgt_list_sh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_hsgt_list_sh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_hsgt_list_sz
+    name: 港股通(深)标的
+    aliases: [港股通(深)标的, 港股通深标的, hk_hsgt_list_sz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_hsgt_list_sz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_hsgt_list_all
+    name: 港股通标的(沪深合计)
+    aliases: [港股通标的(沪深合计), hk_hsgt_list_all]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_hsgt_list_all, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_stock_list
+    name: 全部港股
+    aliases: [全部港股, 港股列表, hk_stock_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_stock_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_main_board
+    name: 港股主板
+    aliases: [港股主板, hk_main_board]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_main_board, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_gem
+    name: 港股创业板
+    aliases: [港股创业板, hk_gem]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_gem, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_known_list
+    name: 知名港股
+    aliases: [知名港股, 知名港股列表, hk_known_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_known_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_blue_chip_list
+    name: 港股蓝筹股
+    aliases: [港股蓝筹股, hk_blue_chip_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_blue_chip_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_red_chip_list
+    name: 港股红筹股
+    aliases: [港股红筹股, hk_red_chip_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_red_chip_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_red_chip_components
+    name: 红筹成分股
+    aliases: [红筹成分股, hk_red_chip_components]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_red_chip_components, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_soe_list
+    name: 港股国企股
+    aliases: [港股国企股, hk_soe_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_soe_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_soe_components
+    name: 国企成分股
+    aliases: [国企成分股, hk_soe_components]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_soe_components, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_rmb_stock_list
+    name: 人民币交易港股
+    aliases: [人民币交易港股, hk_rmb_stock_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_rmb_stock_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_hsics_large
+    name: 恒生综合大型股
+    aliases: [恒生综合大型股, hk_hsics_large]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_hsics_large, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_hsics_mid
+    name: 恒生综合中型股
+    aliases: [恒生综合中型股, hk_hsics_mid]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_hsics_mid, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_adr_list
+    name: 港股ADR
+    aliases: [港股ADR, hk_adr_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_adr_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_index_list
+    name: 香港指数
+    aliases: [香港指数, hk_index_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_index_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_warrant_list
+    name: 港股窝轮
+    aliases: [港股窝轮, 窝轮, 认股证, hk_warrant_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_warrant_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: hk_cbbc_list
+    name: 港股牛熊证
+    aliases: [港股牛熊证, 牛熊证, hk_cbbc_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: hk_cbbc_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_stock_list
+    name: 全部美股
+    aliases: [全部美股, 美股列表, us_stock_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_stock_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_known_list
+    name: 知名美股
+    aliases: [知名美股, us_known_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_known_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_technology
+    name: 知名美股·科技
+    aliases: [知名美股·科技, us_technology]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_technology, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_financial
+    name: 知名美股·金融
+    aliases: [知名美股·金融, us_financial]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_financial, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_medicine_food
+    name: 知名美股·医药食品
+    aliases: [知名美股·医药食品, us_medicine_food]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_medicine_food, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_automotive_energy
+    name: 知名美股·汽车能源
+    aliases: [知名美股·汽车能源, us_automotive_energy]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_automotive_energy, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_media
+    name: 知名美股·媒体
+    aliases: [知名美股·媒体, us_media]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_media, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_manufacture_retail
+    name: 知名美股·制造零售
+    aliases: [知名美股·制造零售, us_manufacture_retail]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_manufacture_retail, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_china_list
+    name: 中国概念股
+    aliases: [中国概念股, us_china_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_china_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_china_net_list
+    name: 互联网中国概念股
+    aliases: [互联网中国概念股, us_china_net_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_china_net_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_index_list
+    name: 美股指数
+    aliases: [美股指数, us_index_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_index_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: us_otc_list
+    name: 粉单市场
+    aliases: [粉单市场, OTC, 粉单, us_otc_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: us_otc_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: uk_list
+    name: 英股
+    aliases: [英股, 英股列表, 英国股票, uk_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: uk_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: ch_gdr_list
+    name: 瑞士GDR
+    aliases: [瑞士GDR, GDR, 瑞士GDR列表, ch_gdr_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: ch_gdr_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: etf_list
+    name: ETF基金行情
+    aliases: [ETF基金行情, ETF列表, 全部ETF, etf_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: etf_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: lof_list
+    name: LOF基金行情
+    aliases: [LOF基金行情, LOF列表, lof_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: lof_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: reits_list
+    name: REITs行情
+    aliases: [REITs行情, REITs列表, 基础设施基金, reits_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: reits_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: reits_list_sh
+    name: 沪市REITs
+    aliases: [沪市REITs, reits_list_sh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: reits_list_sh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: reits_list_sz
+    name: 深市REITs
+    aliases: [深市REITs, reits_list_sz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: reits_list_sz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: bond_index_list
+    name: 债券指数
+    aliases: [债券指数, bond_index_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: bond_index_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: bond_spot_list_sh
+    name: 上海债券现券
+    aliases: [上海债券现券, 沪债券现券, bond_spot_list_sh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: bond_spot_list_sh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: bond_spot_list_sz
+    name: 深圳债券现券
+    aliases: [深圳债券现券, 深债券现券, bond_spot_list_sz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: bond_spot_list_sz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: bond_spot_list_bj
+    name: 北京债券现券
+    aliases: [北京债券现券, 京债券现券, bond_spot_list_bj]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: bond_spot_list_bj, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: bond_sh_treasury
+    name: 沪国债
+    aliases: [沪国债, bond_sh_treasury]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: bond_sh_treasury, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: bond_sh_enterprise
+    name: 沪企债
+    aliases: [沪企债, bond_sh_enterprise]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: bond_sh_enterprise, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: bond_sh_convertible
+    name: 沪转债
+    aliases: [沪转债, bond_sh_convertible]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: bond_sh_convertible, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: bond_sz_treasury
+    name: 深国债
+    aliases: [深国债, bond_sz_treasury]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: bond_sz_treasury, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: bond_sz_enterprise
+    name: 深企债
+    aliases: [深企债, bond_sz_enterprise]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: bond_sz_enterprise, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: bond_sz_convertible
+    name: 深转债
+    aliases: [深转债, bond_sz_convertible]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: bond_sz_convertible, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: bond_bj_enterprise
+    name: 北企债
+    aliases: [北企债, bond_bj_enterprise]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: bond_bj_enterprise, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: repo_sh
+    name: 上证质押式回购
+    aliases: [上证质押式回购, 沪回购, 国债逆回购沪, repo_sh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: repo_sh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: repo_sz
+    name: 深证质押式回购
+    aliases: [深证质押式回购, 深回购, 国债逆回购深, repo_sz]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: repo_sz, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: convertible_bond_comparison
+    name: 可转债比价表
+    aliases: [可转债比价表, 可转债比价, 可转债全表, convertible_bond_comparison]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: convertible_bond_comparison, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_list
+    name: 所有汇率
+    aliases: [所有汇率, forex_list]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_list, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_basic
+    name: 基本汇率
+    aliases: [基本汇率, forex_basic]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_basic, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_cross
+    name: 交叉汇率
+    aliases: [交叉汇率, forex_cross]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_cross, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_cny
+    name: 人民币品种
+    aliases: [人民币品种, forex_cny]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_cny, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_cnyc
+    name: 人民币中间价
+    aliases: [人民币中间价, forex_cnyc]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_cnyc, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_cnh
+    name: 离岸人民币
+    aliases: [离岸人民币, forex_cnh]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_cnh, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_bank_icbc
+    name: 工商银行外汇牌价
+    aliases: [工商银行外汇牌价, 工行外汇牌价, forex_bank_icbc]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_bank_icbc, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_bank_abc
+    name: 农业银行外汇牌价
+    aliases: [农业银行外汇牌价, 农行外汇牌价, forex_bank_abc]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_bank_abc, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_bank_boc
+    name: 中国银行外汇牌价
+    aliases: [中国银行外汇牌价, 中行外汇牌价, forex_bank_boc]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_bank_boc, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_bank_ccb
+    name: 建设银行外汇牌价
+    aliases: [建设银行外汇牌价, 建行外汇牌价, forex_bank_ccb]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_bank_ccb, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_bank_bcm
+    name: 交通银行外汇牌价
+    aliases: [交通银行外汇牌价, 交行外汇牌价, forex_bank_bcm]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_bank_bcm, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: forex_bank_cmb
+    name: 招商银行外汇牌价
+    aliases: [招商银行外汇牌价, 招行外汇牌价, forex_bank_cmb]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: forex_bank_cmb, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: gold_sh_spot
+    name: 上海黄金现货
+    aliases: [上海黄金现货, 沪金现货, gold_sh_spot]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: gold_sh_spot, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: gold_sh_futures
+    name: 上海黄金期货
+    aliases: [上海黄金期货, gold_sh_futures]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: gold_sh_futures, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: gold_global_spot
+    name: 国际贵金属现货
+    aliases: [国际贵金属现货, gold_global_spot]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: gold_global_spot, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: gold_global_futures
+    name: 国际贵金属期货
+    aliases: [国际贵金属期货, 外盘贵金属, CME贵金属, gold_global_futures]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: gold_global_futures, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: futures_shfe
+    name: 上期所期货
+    aliases: [上期所期货, 上期所, futures_shfe]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: futures_shfe, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: futures_ine
+    name: 上期能源期货
+    aliases: [上期能源期货, 上期能源, futures_ine]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: futures_ine, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: futures_dce
+    name: 大商所期货
+    aliases: [大商所期货, 大商所, futures_dce]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: futures_dce, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: futures_czce
+    name: 郑商所期货
+    aliases: [郑商所期货, 郑商所, futures_czce]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: futures_czce, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: futures_gfex
+    name: 广期所期货
+    aliases: [广期所期货, 广期所, futures_gfex]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: futures_gfex, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: futures_cffex
+    name: 中金所期货
+    aliases: [中金所期货, 中金所, futures_cffex]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: futures_cffex, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_list_sse
+    name: 上交所期权
+    aliases: [上交所期权, 上交所期权列表, 50ETF期权, option_list_sse]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: option_list_sse, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_list_szse
+    name: 深交所期权
+    aliases: [深交所期权, 深交所期权列表, 沪深300ETF期权, option_list_szse]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: option_list_szse, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_list_all
+    name: 全部商品期权
+    aliases: [全部商品期权, option_list_all]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: option_list_all, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_call_sse
+    name: 上交所认购期权
+    aliases: [上交所认购期权, option_call_sse]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: option_call_sse, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_put_sse
+    name: 上交所认沽期权
+    aliases: [上交所认沽期权, option_put_sse]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: option_put_sse, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_call_szse
+    name: 深交所认购期权
+    aliases: [深交所认购期权, option_call_szse]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: option_call_szse, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_put_szse
+    name: 深交所认沽期权
+    aliases: [深交所认沽期权, option_put_szse]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: option_put_szse, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_cffex_all
+    name: 中金所股指期权
+    aliases: [中金所股指期权, 中金所期权, 股指期权, option_cffex_all]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: option_cffex_all, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_cffex_hs300
+    name: 沪深300股指期权
+    aliases: [沪深300股指期权, option_cffex_hs300]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: option_cffex_hs300, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_cffex_zz1000
+    name: 中证1000股指期权
+    aliases: [中证1000股指期权, option_cffex_zz1000]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.listed, field: "", args: {name: option_cffex_zz1000, page_size: page_size, page: page}, row: all, priority: 1}]
+
+
+  # ---- P2-c · 沪深港通实时资金流（kamt）----
+  - id: hsgt_realtime_flow
+    name: 沪深港通实时资金流
+    aliases: [沪深港通实时资金流, 北向资金实时, 沪深港通额度, 沪股通资金, 深股通资金, hsgt_realtime_flow]
+    group: quote
+    kind: table
+    providers: [{endpoint: quote.kamt, field: "", row: all, priority: 1}]
+
+  - id: hsgt_realtime_flow_history
+    name: 沪深港通资金流历史
+    aliases: [沪深港通资金流历史, 北向资金历史, 沪深港通历史, hsgt_realtime_flow_history]
+    group: quote
+    kind: series
+    args: {lmt: {required: false}}
+    providers: [{endpoint: quote.kamt_kline, field: "", args: {lmt: lmt}, row: all, priority: 1}]
+
+  # ---- P2-c · 大盘星图 / 盘口异动 ----
+  - id: index_snapshot
+    name: 市场总貌指数快照
+    aliases: [市场总貌, 大盘指数快照, 上证指数快照, 深证成指快照, 创业板指快照, 沪深300快照, index_snapshot]
+    group: quote
+    kind: table
+    args: {index: {required: false}}
+    providers: [{endpoint: quote.index_snapshot, field: "", args: {index: index}, row: all, priority: 1}]
+
+  - id: market_up_count
+    name: 市场上涨家数
+    aliases: [上涨家数, 涨家数, market_up_count]
+    group: quote
+    kind: scalar
+    args: {index: {required: false}}
+    value_type: int
+    providers: [{endpoint: quote.market_breadth, field: up_count, args: {index: index}, priority: 1}]
+
+  - id: market_down_count
+    name: 市场下跌家数
+    aliases: [下跌家数, 跌家数, market_down_count]
+    group: quote
+    kind: scalar
+    args: {index: {required: false}}
+    value_type: int
+    providers: [{endpoint: quote.market_breadth, field: down_count, args: {index: index}, priority: 1}]
+
+  - id: market_flat_count
+    name: 市场平盘家数
+    aliases: [平盘家数, 平家数, market_flat_count]
+    group: quote
+    kind: scalar
+    args: {index: {required: false}}
+    value_type: int
+    providers: [{endpoint: quote.market_breadth, field: flat_count, args: {index: index}, priority: 1}]
+
+  - id: market_breadth
+    name: 市场涨跌家数
+    aliases: [涨跌家数, 市场涨跌家数, market_breadth]
+    group: quote
+    kind: table
+    args: {index: {required: false}}
+    providers: [{endpoint: quote.market_breadth, field: "", args: {index: index}, priority: 1}]
+
+  - id: market_breadth_all
+    name: 市场涨跌家数(主要指数)
+    aliases: [主要指数涨跌家数, market_breadth_all]
+    group: quote
+    kind: table
+    providers: [{endpoint: quote.market_breadth, field: "", args: {index: all}, row: all, priority: 1}]
+
+  - id: pkyd
+    name: 盘口异动明细
+    aliases: [盘口异动, 异动明细, 实时异动, 个股异动, pkyd]
+    group: quote
+    kind: table
+    args: {kind: {required: false}, page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.pkyd, field: "", args: {kind: kind, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  # ---- P2-c · 涨停板专题补充 ----
+  - id: qs_pool
+    name: 强势股池
+    aliases: [强势股, 强势股池, qs_pool]
+    group: quote
+    kind: table
+    args: {trade_date: {required: false}, page_size: {required: false}}
+    providers: [{endpoint: pool.get, field: "", args: {kind: qs, trade_date: trade_date, page_size: page_size}, row: all, priority: 1}]
+
+  - id: cx_pool
+    name: 次新股池
+    aliases: [次新股, 次新股池, cx_pool]
+    group: quote
+    kind: table
+    args: {trade_date: {required: false}, page_size: {required: false}}
+    providers: [{endpoint: pool.get, field: "", args: {kind: cx, trade_date: trade_date, page_size: page_size}, row: all, priority: 1}]
+
+  - id: zt_sentiment
+    name: 涨跌分布
+    aliases: [涨跌分布, 涨跌家数分布, 市场情绪, 赚钱效应, zt_sentiment]
+    group: quote
+    kind: table
+    args: {trade_date: {required: false}}
+    providers: [{endpoint: pool.fenbu, field: "", args: {trade_date: trade_date}, row: all, priority: 1}]
+
+  # ---- P2-c · K 线周期与多日分时 ----
+  - id: kline_min5
+    name: 5分钟K线
+    aliases: [5分钟K线, 五分钟K线, kline_min5]
+    group: quote
+    kind: series
+    args: {code: {required: true}, lmt: {required: false}}
+    providers: [{endpoint: quote.kline, field: "", args: {code: code, klt: 5, lmt: lmt}, row: all, priority: 1}]
+
+  - id: kline_min15
+    name: 15分钟K线
+    aliases: [15分钟K线, 十五分钟K线, kline_min15]
+    group: quote
+    kind: series
+    args: {code: {required: true}, lmt: {required: false}}
+    providers: [{endpoint: quote.kline, field: "", args: {code: code, klt: 15, lmt: lmt}, row: all, priority: 1}]
+
+  - id: kline_min30
+    name: 30分钟K线
+    aliases: [30分钟K线, 三十分钟K线, kline_min30]
+    group: quote
+    kind: series
+    args: {code: {required: true}, lmt: {required: false}}
+    providers: [{endpoint: quote.kline, field: "", args: {code: code, klt: 30, lmt: lmt}, row: all, priority: 1}]
+
+  - id: kline_min60
+    name: 60分钟K线
+    aliases: [60分钟K线, 六十分钟K线, kline_min60]
+    group: quote
+    kind: series
+    args: {code: {required: true}, lmt: {required: false}}
+    providers: [{endpoint: quote.kline, field: "", args: {code: code, klt: 60, lmt: lmt}, row: all, priority: 1}]
+
+  - id: trend_multi
+    name: 多日分时
+    aliases: [多日分时, 五日分时, 分时多日, trend_multi]
+    group: quote
+    kind: series
+    args: {code: {required: true}, ndays: {required: false}}
+    providers: [{endpoint: quote.trends, field: "", args: {code: code, ndays: ndays}, row: all, priority: 1}]
+
+  # ---- P2-c · 港/美/外汇/国际指数 详情（按 secid）----
+  - id: secid_quote
+    name: 跨市场快照
+    aliases: [跨市场快照, 港股快照, 美股快照, 外汇快照, 国际指数快照, 港股行情, 美股行情, secid_quote, hk_quote, us_quote, forex_quote, global_index_quote]
+    group: quote
+    kind: table
+    args: {secid: {required: true}}
+    providers: [{endpoint: quote.snapshot_secid, field: "", args: {secid: secid}, row: all, priority: 1}]
+
+  - id: secid_kline
+    name: 跨市场K线
+    aliases: [跨市场K线, 港股K线, 美股K线, 外汇K线, 国际指数K线, secid_kline, hk_kline, us_kline, forex_kline]
+    group: quote
+    kind: series
+    args: {secid: {required: true}, klt: {required: false}, lmt: {required: false}}
+    providers: [{endpoint: quote.kline_secid, field: "", args: {secid: secid, klt: klt, lmt: lmt}, row: all, priority: 1}]
+
+  # ---- P2-c · 期货 / 期权（按市场+品种 参数化）----
+  - id: futures_contract
+    name: 期货品种合约
+    aliases: [期货合约, 期货品种, 合约列表, futures_contract]
+    group: quote
+    kind: table
+    args: {market: {required: true}, product: {required: false}, page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.futures_contracts, field: "", args: {market: market, product: product, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_commodity
+    name: 商品期权合约
+    aliases: [商品期权, 期权合约, 商品期权列表, option_commodity]
+    group: quote
+    kind: table
+    args: {market: {required: true}, product: {required: false}, page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.option_contracts, field: "", args: {market: market, product: product, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  - id: option_tquote
+    name: 期权T型报价
+    aliases: [T型报价, 期权T型报价, 期权报价, option_tquote]
+    group: quote
+    kind: table
+    args: {underlying: {required: true}, kind: {required: false}, page_size: {required: false}, page: {required: false}}
+    providers: [{endpoint: quote.option_tquote, field: "", args: {underlying: underlying, kind: kind, page_size: page_size, page: page}, row: all, priority: 1}]
+
+  # =====================================================================
+  # 全量补全 · 宏观利率 / 准备金 / 外汇贷款 / 同业拆借 / 全球利率
+  # =====================================================================
+  - id: deposit_reserve_rate
+    name: 存款准备金率
+    aliases: [存款准备金率, 准备金率, 存款准备金, deposit_reserve_rate]
+    group: macro
+    kind: series
+    unit: "%"
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_ECONOMY_DEPOSIT_RESERVE, sort_columns: TRADE_DATE, sort_types: -1, page_size: page_size}, row: all, priority: 1}
+
+  - id: benchmark_interest_rate
+    name: 存贷款基准利率
+    aliases: [存贷款基准利率, 基准利率, 存款利率, 贷款利率, benchmark_interest_rate]
+    group: macro
+    kind: series
+    unit: "%"
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_ECONOMY_DEPOSIT_RATE, sort_columns: REPORT_DATE, sort_types: -1, page_size: page_size}, row: all, priority: 1}
+
+  - id: forex_loan
+    name: 金融机构外汇贷款
+    aliases: [外汇贷款, 金融机构外汇贷款, forex_loan]
+    group: macro
+    kind: series
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_ECONOMY_FOREX_LOAN, sort_columns: REPORT_DATE, sort_types: -1, page_size: page_size}, row: all, priority: 1}
+
+  - id: shibor
+    name: 同业拆借利率
+    aliases: [Shibor, SHIBOR, 拆借利率, 同业拆借利率, 上海银行间拆借利率, 银行间拆借, shibor]
+    group: macro
+    kind: series
+    unit: "%"
+    args: {page_size: {required: false}}
+    calibrations:
+      market: {values: [shibor, chibor, libor, hibor], default: shibor, maps: {shibor: '001', chibor: '002', libor: '003', hibor: '005'}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_IMP_INTRESTRATEN, filter: '(LATEST_RECORD=1)(MARKET_CODE="{market_field}")', sort_columns: INDICATOR_ID, sort_types: 1, page_size: page_size}, row: all, priority: 1}
+
+  - id: global_interest_rate
+    name: 全球主要国家利率
+    aliases: [全球利率, 主要国家利率, 全球央行利率, global_interest_rate]
+    group: macro
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_MAIN_COUNTRY_IR, page_size: page_size}, row: all, priority: 1}
+
+  - id: commodity_index
+    name: 商品指数（中证商品指数）
+    aliases: [商品指数, 中证商品指数, 工业品价格指数, commodity_index]
+    group: macro
+    kind: series
+    args: {indicator_id: {required: false}, page_size: {required: false}}
+    providers:
+      - {endpoint: ext.commodity_index, field: "", args: {indicator_id: indicator_id, page_size: page_size}, row: all, priority: 1}
+
+  # =====================================================================
+  # 全量补全 · 期货数据中心（主力合约/成交持仓/机构）
+  # =====================================================================
+  - id: futures_main_contract
+    name: 期货主力合约列表
+    aliases: [期货主力合约, 主力合约, 期货合约列表, futures_main_contract]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}, page: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_FUTU_POSITIONCODE, sort_columns: SECURITY_CODE, sort_types: 1, page_size: page_size, page: page}, row: all, priority: 1}
+
+  - id: futures_position_rank
+    name: 期货成交持仓排名
+    aliases: [期货成交持仓, 期货持仓排名, 期货成交排名, futures_position_rank]
+    group: quote
+    kind: table
+    args: {security_code: {required: false}, trade_market_code: {required: false}, page_size: {required: false}}
+    providers:
+      - {endpoint: ext.futures_position_rank, field: "", args: {security_code: security_code, trade_market_code: trade_market_code, page_size: page_size}, row: all, priority: 1}
+
+  - id: futures_org
+    name: 期货机构列表
+    aliases: [期货机构, 期货公司列表, futures_org]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_FUTU_FUTUREORGLIST, page_size: page_size}, row: all, priority: 1}
+
+  # =====================================================================
+  # 全量补全 · 贵金属数据中心（CFTC持仓/COMEX库存/ETF黄金）
+  # =====================================================================
+  - id: precious_metal
+    name: 贵金属数据中心（CFTC持仓/COMEX库存/ETF黄金）
+    aliases: [贵金属, 黄金库存, 黄金持仓, CFTC, COMEX, ETF黄金, 钯金, 铂金, 白银, precious_metal]
+    group: quote
+    kind: series
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_FUTUOPT_GOLDSIL, sort_columns: REPORT_DATE, sort_types: -1, page_size: page_size}, row: all, priority: 1}
+
+  # =====================================================================
+  # 全量补全 · 期权数据中心（龙虎榜）
+  # =====================================================================
+  - id: option_lhb
+    name: 期权龙虎榜
+    aliases: [期权龙虎榜, 期权持仓排名, 期权成交排名, option_lhb]
+    group: quote
+    kind: table
+    args: {security_code: {required: false}, page_size: {required: false}}
+    providers:
+      - {endpoint: ext.option_lhb, field: "", args: {security_code: security_code, page_size: page_size}, row: all, priority: 1}
+
+  # ---- 全量补全 · 期货持仓均价 / 库存 ----
+  - id: futures_avg_price
+    name: 期货持仓均价
+    aliases: [期货持仓均价, 持仓均价, futures_avg_price]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_FUTU_AVGPPAL, sort_columns: TRADE_DATE, sort_types: -1, page_size: page_size}, row: all, priority: 1}
+
+  - id: futures_stock_data
+    name: 期货库存数据
+    aliases: [期货库存, 库存数据, 交易所库存, futures_stock_data]
+    group: quote
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: dc.get, field: "", args: {report: RPT_FUTU_STOCKDATA, sort_columns: TRADE_DATE, sort_types: -1, page_size: page_size}, row: all, priority: 1}
+
+  # ---- 全量补全 · 基金分红/拆分 ----
+  - id: fund_dividend
+    name: 基金分红送配/拆分
+    aliases: [基金分红, 基金拆分, 分红送配, 拆分折算, fund_dividend]
+    group: fund
+    kind: table
+    args: {code: {required: true}}
+    providers:
+      - {endpoint: fund.dividend, field: "", args: {code: code}, row: all, priority: 1}
+
+  - id: fund_rating
+    name: 基金评级
+    aliases: [基金评级, 基金星级, fund_rating]
+    group: fund
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: fund.rating, field: "", args: {page_size: page_size}, row: all, priority: 1}
+
+  - id: fund_company
+    name: 基金公司列表
+    aliases: [基金公司, 基金公司排名, fund_company]
+    group: fund
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: fund.company, field: "", args: {page_size: page_size}, row: all, priority: 1}
+
+  # ---- 全量补全 · 原文文件（研报PDF/公告PDF及定期报告、招股书附件）----
+  - id: report_pdf
+    name: 研报PDF原文
+    aliases: [研报PDF, 研报原文, 研报附件, report_pdf]
+    group: news
+    kind: scalar
+    args: {info_code: {required: true}}
+    providers:
+      - {endpoint: news.report_pdf, field: "", args: {info_code: info_code}, row: all, priority: 1}
+
+  - id: announcement_pdf
+    name: 公告原文PDF
+    aliases: [公告PDF, 公告原文, 定期报告PDF, 招股书, 公告附件, announcement_pdf]
+    group: news
+    kind: scalar
+    args: {art_code: {required: true}}
+    providers:
+      - {endpoint: news.announcement_pdf, field: "", args: {art_code: art_code}, row: all, priority: 1}
+
+  # =====================================================================
+  # 全量补全 · 可转债数据中心
+  # =====================================================================
+  - id: kzz_detail
+    name: 可转债数据中心
+    aliases: [可转债, 可转债明细, 转股价, 转股价值, 转股溢价率, 可转债条款, kzz_detail]
+    group: fund
+    kind: table
+    args: {page_size: {required: false}}
+    providers:
+      - {endpoint: ext.kzz_detail, field: "", args: {page_size: page_size}, row: all, priority: 1}

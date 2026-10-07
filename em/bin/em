@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# em —— 使用导向的东方财富数据 CLI（纯 Python，指向 src/em 包）
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$DIR/.." && pwd)"
+export PYTHONPATH="$ROOT/src:${PYTHONPATH:-}"
+exec python3 -m em.cli "$@"
