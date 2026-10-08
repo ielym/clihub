@@ -1,4 +1,4 @@
-"""em —— 使用导向（intent-oriented）的东方财富数据 CLI。
+"""em-crawler —— 使用导向（intent-oriented）的东方财富数据 CLI。
 
 把「按数据意图查询」与「底层东财接口抓取」解耦：
 - catalog/   指标目录（数据意图 → 口径 → 多源 provider 链）

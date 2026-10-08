@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from em.catalog import Catalog, Metric, ProviderRef
-from em.client import HttpClient
-from em.providers import _secid, _secucode, _market
-from em.providers.registry import ENDPOINTS
+from em_crawler.catalog import Catalog, Metric, ProviderRef
+from em_crawler.client import HttpClient
+from em_crawler.providers import _secid, _secucode, _market
+from em_crawler.providers.registry import ENDPOINTS
 
 _ADJUST_FQT = {"none": 0, "qfq": 1, "hfq": 2}
 
@@ -127,6 +127,9 @@ class Engine:
     def query(self, name: str, args: dict | None = None) -> QueryResult:
         args = args or {}
         metric = self.resolve(name)
+        if metric.status == "offline":
+            raise RuntimeError(
+                f"指标 {metric.id} 上游已下线（东财不再提供该指标），定义保留仅供查阅")
         ctx = self._context(args, metric)
         errors = []
         for prov in sorted(metric.providers, key=lambda p: p.priority):

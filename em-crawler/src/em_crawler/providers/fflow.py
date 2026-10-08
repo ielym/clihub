@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from em.providers import _secid
+from em_crawler.providers import _secid
 
 FFLOW_URL = "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get"
 _REFERER = "https://quote.eastmoney.com/"

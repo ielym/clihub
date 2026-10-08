@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from em.providers.datacenter import datacenter, DC_URL, _get
+from em_crawler.providers.datacenter import datacenter, DC_URL, _get
 
 
 def _dc(client, report: str, filter_: str | None, page_size: int = 20,

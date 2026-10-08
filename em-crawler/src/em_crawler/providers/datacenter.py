@@ -5,6 +5,7 @@ F10 JSON 子模块/宏观/数据中心批量事件。统一走 datacenter-web �
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 DC_URL = "https://datacenter-web.eastmoney.com/api/data/v1/get"
@@ -35,6 +36,18 @@ def datacenter(client, report: str, filter: str | None = None,
     columns 默认 ALL；个别报表（如 RPT_BLOCKTRADE_OPERATEDEPT_NAME）columns=ALL 会返回空，
     需显式指定字段列表。
     """
+    return _get(client, DC_URL, report, filter, columns, page_size, page, sort_columns, sort_types)
+
+
+def datacenter_board(client, report: str, filter: str | None = None,
+                     columns: str = "ALL", page_size: int = 10, page: int = 1,
+                     sort_columns: str | None = None, sort_types: int = -1, **kw) -> list[dict]:
+    """板块类报表：页面/URL 里板块代码为 BKxxxx（如 BK0475），而报表 BOARD_CODE
+    存的是数字编码（BK0475 → 475），此处做归一化后再查。
+    """
+    if filter:
+        filter = re.sub(r'(BOARD_CODE=")BK0*(\d+)"',
+                        lambda m: m.group(1) + m.group(2) + '"', filter)
     return _get(client, DC_URL, report, filter, columns, page_size, page, sort_columns, sort_types)
 
 
@@ -75,6 +88,7 @@ def _latest_report_date(client) -> str:
 
 ENDPOINTS = {
     "dc.get": datacenter,
+    "dc.board": datacenter_board,
     "dc.securities": datacenter_securities,
     "zlsj.list": zlsj_list,
 }

@@ -508,7 +508,7 @@ metrics:
     kind: table
     args: {code: {required: true}, page_size: {required: false}}
     providers:
-      - {endpoint: dc.get, field: "", args: {report: RPT_DAILYBILLBOARD_PROFILE, filter: '(SECURITY_CODE="{code}")', sort_columns: TRADE_DATE, sort_types: -1, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPT_BILLBOARD_DAILYDETAILS, filter: '(SECURITY_CODE="{code}")', sort_columns: TRADE_DATE, sort_types: -1, page_size: page_size}, row: all, priority: 1}
 
   - id: lhb_stock_stat
     name: 个股龙虎榜统计
@@ -682,7 +682,7 @@ metrics:
     kind: table
     args: {board_code: {required: true}, page_size: {required: false}}
     providers:
-      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_BKJYMX, filter: "(BOARD_CODE=\"{board_code}\")", sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.board, field: "", args: {report: RPTA_WEB_BKJYMX, filter: "(BOARD_CODE=\"{board_code}\")", sort_columns: TRADE_DATE, page_size: page_size}, row: all, priority: 1}
 
   - id: margin_board_member
     name: 板块成分股两融（今日）
@@ -691,7 +691,7 @@ metrics:
     kind: table
     args: {board_code: {required: true}, page_size: {required: false}}
     providers:
-      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_GGJYMX, filter: "(BOARD_CODE=\"{board_code}\")", sort_columns: FIN_NETBUY_AMT, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.board, field: "", args: {report: RPTA_WEB_GGJYMX, filter: "(BOARD_CODE=\"{board_code}\")", sort_columns: FIN_NETBUY_AMT, page_size: page_size}, row: all, priority: 1}
 
   - id: margin_board_member_range
     name: 板块成分股两融（区间）
@@ -702,7 +702,7 @@ metrics:
     calibrations:
       interval: {values: [3日, 5日, 10日], default: 3日}
     providers:
-      - {endpoint: dc.get, field: "", args: {report: RPTA_WEB_GGQJJYMX, filter: "(BOARD_CODE=\"{board_code}\")(INTERVAL_TYPE=\"{interval}\")", sort_columns: FIN_NETBUY_AMT, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.board, field: "", args: {report: RPTA_WEB_GGQJJYMX, filter: "(BOARD_CODE=\"{board_code}\")(INTERVAL_TYPE=\"{interval}\")", sort_columns: FIN_NETBUY_AMT, page_size: page_size}, row: all, priority: 1}
 
   - id: margin_detail
     name: 融资融券交易明细
@@ -1601,6 +1601,7 @@ metrics:
     aliases: [社融, 社会融资]
     group: macro
     kind: series
+    status: offline          # 上游 macro.domestic 已下线返回空值（2026-10 实测）；定义保留仅供查阅
     args: {page_size: {required: false}}
     providers: [{endpoint: macro.domestic, field: "", args: {indicator: shzr, page_size: page_size}, row: all, priority: 1}]
 
@@ -1617,6 +1618,7 @@ metrics:
     aliases: [用电量, 电力]
     group: macro
     kind: series
+    status: offline          # 上游 macro.domestic 已下线返回空值（2026-10 实测）；定义保留仅供查阅
     args: {page_size: {required: false}}
     providers: [{endpoint: macro.domestic, field: "", args: {indicator: electricity, page_size: page_size}, row: all, priority: 1}]
 
@@ -1636,8 +1638,8 @@ metrics:
     aliases: [股吧帖子, 帖子, 股吧]
     group: guba
     kind: table
-    args: {code: {required: true}, page: {required: false}}
-    providers: [{endpoint: guba.posts, field: "", args: {code: code, page: page, limit: 20}, row: all, priority: 1}]
+    args: {code: {required: true}, page: {required: false}, limit: {required: false}}
+    providers: [{endpoint: guba.posts, field: "", args: {code: code, page: page, limit: limit}, row: all, priority: 1}]
 
   - id: guba_post_content
     name: 股吧帖子正文
@@ -1983,7 +1985,7 @@ metrics:
     kind: table
     args: {code: {required: true}, page_size: {required: false}}
     providers:
-      - {endpoint: dc.get, field: "", args: {report: RPT_STA_PLEORG_CORRE_ORG, filter: '(SECURITY_CODE="{code}")', sort_columns: LAST_PF_DATE, page_size: page_size}, row: all, priority: 1}
+      - {endpoint: dc.get, field: "", args: {report: RPT_GDZY_ZYJG_SUM, filter: '(SECURITY_CODE="{code}")', page_size: page_size}, row: all, priority: 1}
 
   # ---- 高管持股 ----
   - id: executive_hold_chart

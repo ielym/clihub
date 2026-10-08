@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from em.providers import _secid, _market
+from em_crawler.providers import _secid, _market
 
 SNAPSHOT_URL = "https://push2.eastmoney.com/api/qt/stock/get"
 KLINE_URL = "https://push2his.eastmoney.com/api/qt/stock/kline/get"
@@ -284,7 +284,7 @@ def index_flow(client, index: str = "hs2", **kw) -> list[dict]:
 
 def index_flow_kline(client, index: str = "sh", lmt: int = 20, **kw) -> list[dict]:
     """单指数资金流历史（日序列）。"""
-    from em.providers.fflow import moneyflow
+    from em_crawler.providers.fflow import moneyflow
     secid = INDEX_SECIDS.get(index, INDEX_SECIDS["sh"]).split(",")[0]
     return moneyflow(client, secid=secid, lmt=lmt)
 

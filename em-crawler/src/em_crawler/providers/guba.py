@@ -14,6 +14,10 @@ RANK_API = "https://gbcdn.dfcfw.com/rank/popularityList.js"
 
 
 def guba_posts(client, code: str, page: int = 1, limit: int = 20, **kw) -> list[dict]:
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        limit = 20
     url = LIST_URL.format(code=code) if page <= 1 else f"{LIST_URL.format(code=code)[:-5]}_{page}.html"
     html = client.get_text(url, referer=GUBA_REFERER)
     data = _var_json(html, "article_list") or {}

@@ -1,9 +1,9 @@
-"""em CLI 入口：意图查询东方财富数据。
+"""em-crawler CLI 入口：意图查询东方财富数据。
 
 用法：
-  em <指标> <代码> [--口径/参数 ...]
-  em list [--group 行情]
-  em batch <代码> <指标1>,<指标2>,...
+  em-crawler <指标> <代码> [--口径/参数 ...]
+  em-crawler list [--group 行情]
+  em-crawler batch <代码> <指标1>,<指标2>,...
 """
 from __future__ import annotations
 
@@ -21,9 +21,9 @@ def _main(argv: list[str] | None = None) -> None:
         _list(argv[1:])
         return
 
-    from em.catalog import load
-    from em.engine import Engine
-    from em.client import HttpClient
+    from em_crawler.catalog import load
+    from em_crawler.engine import Engine
+    from em_crawler.client import HttpClient
 
     catalog = load()
     engine = Engine(catalog, HttpClient())
@@ -72,7 +72,7 @@ def _parse_flags(tokens: list[str]) -> dict:
 
 def _batch(engine, args: list[str]) -> None:
     if not args:
-        _fail("batch 用法：em batch <代码> <指标1>,<指标2>,...")
+        _fail("batch 用法：em-crawler batch <代码> <指标1>,<指标2>,...")
         return
     code = args[0]
     metrics = args[1].split(",") if len(args) > 1 else []
@@ -86,7 +86,7 @@ def _batch(engine, args: list[str]) -> None:
 
 
 def _list(args: list[str]) -> None:
-    from em.catalog import load
+    from em_crawler.catalog import load
     catalog = load()
     group = None
     for i, a in enumerate(args):
@@ -110,14 +110,14 @@ def _list(args: list[str]) -> None:
 def _help():
     return {
         "ok": True,
-        "name": "em",
+        "name": "em-crawler",
         "version": "2.0.0",
         "usage": [
-            "em list                               列出全部指标（意图）",
-            "em <指标> <代码> [--参数 --口径 ...]     查询单一指标（干净单值）",
-            "em batch <代码> 指标1,指标2,...         批量合并查询",
-            "em <指标> <代码> --trade_date YYYY-MM-DD --adjust qfq",
-            "em pe 000001 --scope ttm",
+            "em-crawler list                               列出全部指标（意图）",
+            "em-crawler <指标> <代码> [--参数 --口径 ...]     查询单一指标（干净单值）",
+            "em-crawler batch <代码> 指标1,指标2,...         批量合并查询",
+            "em-crawler <指标> <代码> --trade_date YYYY-MM-DD --adjust qfq",
+            "em-crawler pe 000001 --scope ttm",
         ],
         "说明": "使用导向：按数据意图查询，返回干净、口径明确的单一指标。",
     }

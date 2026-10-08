@@ -2,7 +2,8 @@
 
 metric 结构（YAML 一条）：
   id, name, aliases, group, kind(scalar|series|table), unit, value_type,
-  args(参数表), calibrations(口径), providers(兜底链), equivalence(一致性断言)
+  args(参数表), calibrations(口径), providers(兜底链), equivalence(一致性断言),
+  status(ok|offline)
 """
 from __future__ import annotations
 
@@ -40,6 +41,7 @@ class Metric:
     providers: list[ProviderRef] = field(default_factory=list)
     equivalence: dict = field(default_factory=dict)
     description: str = ""
+    status: str = "ok"           # ok | offline（上游已下线，保留定义但不可调用）
 
     # ---- 便捷查询 ----
     def calibration(self, name: str) -> dict | None:
@@ -98,6 +100,7 @@ def load(path: str | Path | None = None) -> Catalog:
             providers=[_parse_provider(p) for p in raw.get("providers", [])],
             equivalence=dict(raw.get("equivalence", {}) or {}),
             description=raw.get("description", ""),
+            status=raw.get("status", "ok"),
         )
         metrics[m.id] = m
     return Catalog(metrics=metrics, groups=groups)

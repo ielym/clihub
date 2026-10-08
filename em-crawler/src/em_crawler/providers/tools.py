@@ -9,7 +9,7 @@ QA_REFERER = "https://guba.eastmoney.com/"
 def stock_diagnosis(client, code: str, **kw) -> dict:
     """个股诊断简易评分（0-100），综合股东集中度+行业地位+市值规模。"""
     secucode = f"{code}.{'SH' if code.startswith('6') else 'SZ'}"
-    from em.providers.datacenter import datacenter
+    from em_crawler.providers.datacenter import datacenter
     ind = datacenter(client, "RPT_STOCK_INDUSTRY_STA", filter=f'(SECURITY_CODE="{code}")',
                      page_size=1, page=1) or []
     mkt = datacenter(client, "RPT_STOCK_MARKET_STA", filter=f'(SECURITY_CODE="{code}")',
@@ -33,14 +33,14 @@ def stock_diagnosis(client, code: str, **kw) -> dict:
 
 
 def main_monitor(client, page_size: int = 20, **kw) -> list[dict]:
-    from em.providers.quote import clist
+    from em_crawler.providers.quote import clist
     return clist(client, "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048",
                  fields="f2,f3,f12,f14,f62,f184,f185,f186,f187,f188",
                  page_size=page_size)
 
 
 def index_valuation(client, **kw) -> list[dict]:
-    from em.providers.quote import SNAPSHOT_URL
+    from em_crawler.providers.quote import SNAPSHOT_URL
     indices = [("1.000001", "上证指数"), ("0.399001", "深证成指"), ("0.399006", "创业板指"),
                ("1.000300", "沪深300"), ("1.000016", "上证50"), ("1.000905", "中证500")]
     out = []
@@ -94,7 +94,7 @@ def portfolio_backtest(client, weights=None, period_returns=None, **kw) -> dict:
 def interactive(client, code: str, page_size: int = 10, **kw) -> list[dict]:
     html = client.get_text("https://guba.eastmoney.com/qa/qa_search.aspx",
                            params={"company": code, "qatype": 1}, referer=QA_REFERER)
-    from em.providers.guba import _var_json
+    from em_crawler.providers.guba import _var_json
     data = _var_json(html, "qa_list") or {}
     out = []
     for r in (data.get("re") or [])[:page_size]:
@@ -111,7 +111,7 @@ def finance_infographic(client, code: str, **kw) -> dict:
     secu = f"{'SH' if code.startswith('6') else 'SZ'}{code}"
     url = f"https://emweb.securities.eastmoney.com/PC_HSF10/NewFinanceAnalysis/Index?type=web&code={secu}"
     html = client.get_text(url, referer="https://emweb.securities.eastmoney.com/")
-    from em.providers.f10 import _parse_tables
+    from em_crawler.providers.fund import _parse_tables
     return {"code": code, "url": url, "html_len": len(html), "tables": _parse_tables(html)}
 
 

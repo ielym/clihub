@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 
-from em.providers import _market
+from em_crawler.providers import _market
 
 F10_PAGEAJAX = "https://emweb.securities.eastmoney.com/PC_HSF10/"
 HKF10_PAGEAJAX = "https://emweb.securities.eastmoney.com/PC_HKF10/"

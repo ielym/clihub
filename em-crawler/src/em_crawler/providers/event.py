@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import datetime as _dt
 
-from em.providers.datacenter import datacenter
+from em_crawler.providers.datacenter import datacenter
 
 
 def suspend(client, trade_date: str = "", page_size: int = 100, **kw) -> list[dict]:

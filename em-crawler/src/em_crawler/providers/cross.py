@@ -1,7 +1,7 @@
 """跨市场 Provider：全球指数 / 债券 / 北交所 / 跨市场快照。"""
 from __future__ import annotations
 
-from em.providers.quote import clist, snapshot
+from em_crawler.providers.quote import clist, snapshot
 
 MARKET_LABEL = {
     "100": "HK_INDEX", "116": "HK", "105": "NASDAQ", "106": "NYSE", "107": "AMEX",
